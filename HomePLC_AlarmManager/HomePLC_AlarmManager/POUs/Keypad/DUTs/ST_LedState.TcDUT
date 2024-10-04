@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_LedState" Id="{1997c4f0-ebcd-41c4-ae96-40f41fbc2931}">
+    <Declaration><![CDATA[TYPE ST_LedState :
+STRUCT
+	eLed1	: E_DOCommand;
+	eLed2	: E_DOCommand;
+	eLed3	: E_DOCommand;
+	eLed4	: E_DOCommand;
+	eLed5	: E_DOCommand;
+	eLed6	: E_DOCommand;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

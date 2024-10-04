@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="E_AlarmManagerStep" Id="{b68f1195-d3dd-4661-889e-8fb82ae4debf}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_AlarmManagerStep :
+(
+	Init 					:= 0,
+	CheckEnable				:= 1,
+	
+	HardwareCheck			:= 10,
+	Enabling				:= 11,
+	Enable					:= 12,
+	
+	CheckSensors			:= 20,
+	
+	Warn					:= 30,
+	WaitForDisableWarn		:= 31,
+	SoundAlarm				:= 32,
+	WaitForDisableAlarm		:= 33,
+	
+	DisableAlarm			:= 40,
+	
+	Reset					:= 50
+);
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

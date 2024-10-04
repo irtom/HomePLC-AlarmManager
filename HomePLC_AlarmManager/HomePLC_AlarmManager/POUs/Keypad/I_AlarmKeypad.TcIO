@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_AlarmKeypad" Id="{e1af737e-7ada-48b3-84af-e4bed2430bb9}">
+    <Declaration><![CDATA[// Alarm keypad interface
+INTERFACE I_AlarmKeypad]]></Declaration>
+    <Folder Name="Methods" Id="{bd6d01f8-24c6-4c78-aad1-59ade80f0d13}" />
+    <Folder Name="Properties" Id="{9df19c54-276b-408b-a285-4a5c9406e214}" />
+    <Method Name="CheckCode" Id="{2124e254-5d12-4552-937d-aaf5ddbb14e5}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Returns true if the user input code equals the configured code
+METHOD CheckCode : BOOL]]></Declaration>
+    </Method>
+    <Method Name="Execute" Id="{6687a198-5bd5-408e-bb2d-a604220d5d1b}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD Execute]]></Declaration>
+    </Method>
+    <Property Name="HmiData" Id="{0899eb50-bd5e-49fb-8c99-2af9f87ea4ea}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns the HMI data
+PROPERTY HmiData : ST_AlarmKeypadHMI]]></Declaration>
+      <Get Name="Get" Id="{c683d460-093d-49fe-98b1-cb646f988449}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="Name" Id="{09c3cce0-5fb9-489a-9d79-9510a910ca81}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns the keypad name
+PROPERTY Name : STRING]]></Declaration>
+      <Get Name="Get" Id="{43954b39-90aa-4dbc-9a73-724a16de966d}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Method Name="SetAlarmState" Id="{1b0a1209-7f0d-485f-bb60-2c6ea6f8cf32}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Call this method once when the alarm state is changed
+METHOD SetAlarmState
+VAR_INPUT
+	eAlarmState			: E_AlarmState;		// Alarm state
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="SetBuzzer" Id="{f79373aa-4fb1-449f-a534-4040e85e3a7f}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set the buzzer command
+METHOD SetBuzzer
+VAR_INPUT
+	eCommand	: E_DOCommand;
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="SetConfiguredCode" Id="{ff808e38-20da-40e3-8366-da25a37d4048}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set the keypad configured code
+METHOD SetConfiguredCode
+VAR_INPUT
+	sCode	:	STRING;		// Configured code
+END_VAR]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

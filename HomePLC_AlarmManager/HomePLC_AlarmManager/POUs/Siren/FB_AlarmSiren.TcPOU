@@ -1,0 +1,171 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_AlarmSiren" Id="{bb17f071-7286-41d1-bc99-46b7a45f36c9}" SpecialFunc="None">
+    <Declaration><![CDATA[// Alarm siren FB
+FUNCTION_BLOCK FB_AlarmSiren IMPLEMENTS I_AlarmSiren
+VAR
+	sName				: STRING;				// Siren name
+	
+	ibTamper			AT %I* : BOOL;			// Active low tamper input
+	fbLight				: FB_DigitalOut;		// Siren light digital output FB
+	fbSiren				: FB_DigitalOut;		// Siren sound digital output FB
+	
+	bTamper				: BOOL;					// True if the siren is tampered with
+	
+	bTamperTrigger		: BOOL;					// True when the tamper sensor is triggered (one cycle)
+	
+	stHMI				: ST_AlarmSirenHMI;		// HMI data
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="Methods" Id="{5e628541-4344-477b-a281-0b3fc142337b}" />
+    <Folder Name="Properties" Id="{1d8db5bb-13a1-4335-976d-c1ff1ce48bd0}" />
+    <Method Name="Execute" Id="{70dc7394-9df3-494a-875d-52b5fd2c9299}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD Execute
+VAR_INST
+	fbTamper	: R_TRIG;		// Tamper rising edge
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Convert active low inputs
+bTamper := NOT ibTamper;
+
+// Run FBs
+fbTamper(CLK := bTamper);
+
+// Check trigger
+bTamperTrigger := fbTamper.Q;
+
+// Update HMI
+UpdateHMI();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{9acdc407-6a6c-4961-92b3-f2af5e52d2d4}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains	: BOOL;		// if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode		: BOOL;		// if TRUE, the instance afterwards gets moved into the copy code (online change)
+	
+	sSirenName		: STRING;	// Siren name
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sName := sSirenName;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="HmiData" Id="{06ad8ee2-5edc-4ca1-8bdd-00cc4c074abb}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns the HMI data
+PROPERTY HmiData : ST_AlarmSirenHMI]]></Declaration>
+      <Get Name="Get" Id="{a33e8f75-5063-4901-9b85-6e748ef24f6d}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[HmiData := stHMI;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="SetLight" Id="{cd843fc6-ca1b-496c-a1d3-fe4d993b99c3}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set siren light
+METHOD SetLight
+VAR_INPUT
+	eCommand	: E_DOCommand;		// Siren digital output command
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Set siren digital output command
+fbLight.SetCommand(eCommandIn := eCommand);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetSound" Id="{2333adb4-937b-4551-8298-ff05a5541996}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set siren sound
+METHOD SetSound
+VAR_INPUT
+	eCommand	: E_DOCommand;		// Siren sound digital output command
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Set the siren digital output command
+fbSiren.SetCommand(eCommandIn := eCommand);]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Tamper" Id="{90d49093-fed7-4a0b-bc91-27c754668288}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the siren is tampered with (as long as the siren is tampered with)
+PROPERTY Tamper : BOOL]]></Declaration>
+      <Get Name="Get" Id="{4b69639c-26c8-4868-b58b-5b0f44875f7b}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Tamper := bTamper;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="TamperTrigger" Id="{5c0c88fa-1b21-427a-aec3-222a246b0bf9}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the tamper sensor is triggered (one cycle)
+PROPERTY TamperTrigger : BOOL]]></Declaration>
+      <Get Name="Get" Id="{79a68602-190c-4328-ba89-7d471aad2891}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[TamperTrigger := bTamperTrigger;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="UpdateHMI" Id="{2be49e35-556a-4755-9e72-9f1b366da3a3}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Update HMI
+METHOD PRIVATE UpdateHMI
+VAR
+	stSirenHMI	: ST_HmiDigitalOut;
+	stLightHMI	: ST_HmiDigitalOut;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Get data
+stSirenHMI := fbSiren.HmiData;
+stLightHMI := fbLight.HmiData;
+
+// Set HMI data
+stHMI.sName := sName;
+stHMI.bSiren := stSirenHMI.bValue;
+stHMI.bLight := stLightHMI.bValue;
+stHMI.bTamper := bTamper;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_AlarmSiren">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSiren.Execute">
+      <LineId Id="21" Count="0" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="24" Count="1" />
+      <LineId Id="23" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSiren.FB_init">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSiren.HmiData.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSiren.SetLight">
+      <LineId Id="10" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSiren.SetSound">
+      <LineId Id="10" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSiren.Tamper.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSiren.TamperTrigger.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSiren.UpdateHMI">
+      <LineId Id="28" Count="0" />
+      <LineId Id="30" Count="2" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="22" Count="1" />
+      <LineId Id="20" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

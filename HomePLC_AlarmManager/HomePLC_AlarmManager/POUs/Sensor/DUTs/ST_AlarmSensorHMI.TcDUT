@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_AlarmSensorHMI" Id="{af77090b-9d40-4dff-8455-e4047ab87e8f}">
+    <Declaration><![CDATA[TYPE ST_AlarmSensorHMI :
+STRUCT
+	sName		: STRING;	// Sensor name
+	bAlarm		: BOOL;		// True if the sensor detects something
+	bTamper		: BOOL;		// True if the sensor is tampered with
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_AlarmManager" Id="{2b8f5ba1-9895-498f-9f26-89e6a92af4ab}">
+    <Declaration><![CDATA[// Alarm manager interface
+INTERFACE I_AlarmManager]]></Declaration>
+    <Folder Name="Methods" Id="{70377d73-65f0-4772-90cb-5b853168473d}" />
+    <Method Name="AddKeypad" Id="{5d67680b-cbc1-437c-9872-655e16f8227f}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Add a keypad to the alarm manager
+METHOD AddKeypad
+VAR_INPUT
+	IKeypad		: I_AlarmKeypad;		// Keypad interface
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="AddSensor" Id="{82d4c333-a073-48b1-9fb6-78c4b7428273}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Add an alarm sensor to the alarm manager
+METHOD AddSensor
+VAR_INPUT
+	ISensor		: I_AlarmSensor;		// Alarm sensor interface
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="AddSiren" Id="{fc9dd127-dd08-4917-80f9-1119b97f69e5}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Add a siren to the alarm manager
+METHOD AddSiren
+VAR_INPUT
+	ISiren		: I_AlarmSiren;		// Siren interface
+END_VAR]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

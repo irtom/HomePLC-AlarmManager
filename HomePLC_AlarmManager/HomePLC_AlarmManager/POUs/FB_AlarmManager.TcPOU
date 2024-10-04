@@ -1,0 +1,614 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_AlarmManager" Id="{6bd1ff22-13a9-41fc-b80e-e488afffffbb}" SpecialFunc="None">
+    <Declaration><![CDATA[// Alarm manager
+{attribute 'reflection'} 
+FUNCTION_BLOCK FB_AlarmManager IMPLEMENTS I_AlarmManager
+VAR
+	aKeypads	: ARRAY [0..GVL_AlarmManager.nMaxKeypads - 1] OF I_AlarmKeypad;		// Keypads
+	nKeypads	: INT;																// Number of keypads
+	
+	aSensors	: ARRAY [0..GVL_AlarmManager.nMaxSensors - 1] OF I_AlarmSensor;		// Alarm sensors
+	nSensors	: INT;																// Number of alarm sensors
+	
+	aSirens		: ARRAY [0..GVL_AlarmManager.nMaxSirens - 1] OF I_AlarmSiren;		// Alarm sirens
+	nSirens		: INT;																// Number of alarm sirens
+	
+	eState		: E_AlarmState;														// Alarm state
+	
+	fbLogger	: class_Tc3EventLogger;												// Logging FB
+
+	// Use attributes to copy instance name to sName
+	{attribute 'instance-path'} 
+    {attribute 'noinit'} 
+    sName		: STRING; 															// Instance name
+	
+	stHMI		: ST_AlarmManagerHMI;												// HMI data
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="Methods" Id="{6b8c8bcd-cc3f-41d5-91c5-467ed078760c}" />
+    <Method Name="AddKeypad" Id="{714db9aa-f5e5-4391-8e31-d6cad9bd9b6e}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Add a keypad to the alarm manager
+METHOD AddKeypad
+VAR_INPUT
+	IKeypad		: I_AlarmKeypad;		// Keypad interface
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Add keypad
+aKeypads[nKeypads] := IKeypad;
+nKeypads := nKeypads + 1;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddSensor" Id="{bb72c9a0-6888-40a1-881d-6ef7ae3a27c5}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Add an alarm sensor to the alarm manager
+METHOD AddSensor
+VAR_INPUT
+	ISensor		: I_AlarmSensor;		// Alarm sensor interface
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Add alarm sensor
+aSensors[nSensors] := ISensor;
+nSensors := nSensors + 1;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddSiren" Id="{a27aff50-53ad-4cb3-a598-24c213c802a8}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Add a siren to the alarm manager
+METHOD AddSiren
+VAR_INPUT
+	ISiren		: I_AlarmSiren;		// Siren interface
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Add siren
+aSirens[nSirens] := ISiren;
+nSirens := nSirens + 1;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Execute" Id="{ee2098df-6b45-4b5c-a6b0-e303f06166b9}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD Execute
+VAR_INST
+	eStep						: E_AlarmManagerStep;		// Alarm manager state machine step
+	eStepPrev					: E_AlarmManagerStep;		// Alarm manager state machine previous step
+	bFirstCall					: BOOL;				// Alarm manager state machine step first call
+	
+	bCodeEntered				: BOOL;				// True if the configured code was entered on a keypad
+	bSensorTriggered			: BOOL;				// True if a sensor is triggered
+	bSensorTampered				: BOOL;				// True if a sensor is tampered with
+	bWarn						: BOOL;				// True if the user needs to be warned first when a sensor is triggered
+	bSirenTampered				: BOOL;				// True if a siren is tampered with
+	
+	eBuzzerCommand				: E_DOCommand;		// Keypad buzzer digital output command
+	eSirenLightCommand			: E_DOCommand;		// Siren light digital output command
+	eSirenSoundCommand			: E_DOCommand;		// Siren sound digital output command
+	
+	fbTimer						: TON;				// Timer FB
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Execute methods
+Execute_Keypads(eBuzzerCommand := eBuzzerCommand,
+				bCodeEntered => bCodeEntered);
+Execute_Sensors(bSensorTriggered => bSensorTriggered,
+				bSensorTampered => bSensorTampered,
+				bWarn => bWarn);
+Execute_Sirens(eLightCommand := eSirenLightCommand,
+				eSoundCommand := eSirenSoundCommand,
+				bSirenTampered => bSirenTampered);
+
+// Set variables
+bFirstCall := eStep <> eStepPrev;
+eStepPrev := eStep;
+
+// Execute alarm logic
+CASE eStep OF
+	E_AlarmManagerStep.Init:
+		// Initialize
+		eStep := E_AlarmManagerStep.CheckEnable;
+		
+	E_AlarmManagerStep.CheckEnable:
+		// Check if configured code is entered by the user
+		IF bCodeEntered THEN
+			eStep := E_AlarmManagerStep.HardwareCheck;
+		END_IF
+		
+	E_AlarmManagerStep.HardwareCheck:
+		// Hardware check before enabling alarm
+		
+		// Check if a sensor detects something or if one is tampered with
+		// Check if a siren is tampered with
+		IF bSensorTampered OR bSirenTampered THEN
+			// Sound buzzer to indicate alarm cannot be enabled
+			eBuzzerCommand := E_DOCommand.Flash;
+			
+			fbLogger.AddInfo('Alarm cannot be enabled due to tampering');
+			
+			eStep := E_AlarmManagerStep.Reset;
+		ELSE
+			eStep := E_AlarmManagerStep.Enabling;
+		END_IF
+		
+	E_AlarmManagerStep.Enabling:
+		// Enabling alarm
+		IF bFirstCall THEN
+			// Initialize timer
+			fbTimer.PT := T#20S;
+			fbTimer(IN := FALSE);
+			
+			// Set alarm state
+			eState := E_AlarmState.Enabling;
+			
+			// Set buzzer to blinking
+			eBuzzerCommand := E_DOCommand.Blink;
+		ELSE
+			// Run timer FB
+			fbTimer(IN := TRUE);
+			
+			// Check if timer expired
+			IF fbTimer.Q THEN
+				// Turn off buzzer
+				eBuzzerCommand := E_DOCommand.Off;
+			
+				eStep := E_AlarmManagerStep.Enable;
+			END_IF
+		END_IF
+	
+	E_AlarmManagerStep.Enable:
+		// Enable alarm
+		eState := E_AlarmState.On;
+		
+		fbLogger.AddInfo('Alarm enabled');
+		
+		eStep := E_AlarmManagerStep.CheckSensors;
+		
+	E_AlarmManagerStep.CheckSensors:
+		// Check if configure code is entered by user
+		IF bCodeEntered THEN
+			eStep := E_AlarmManagerStep.DisableAlarm;
+		END_IF
+		
+		// Check if a sensor or siren is tampered with
+		IF bSensorTampered OR bSirenTampered THEN
+			eStep := E_AlarmManagerStep.SoundAlarm;
+		END_IF
+		
+		// Check if a sensor detects something
+		IF bSensorTriggered THEN
+			// Check if user needs to be warned
+			IF bWarn THEN
+				eStep := E_AlarmManagerStep.Warn;
+			ELSE
+				eStep := E_AlarmManagerStep.SoundAlarm;
+			END_IF
+		END_IF
+		
+	E_AlarmManagerStep.Warn:
+		// Warn the user before sounding the alarm
+		eBuzzerCommand := E_DOCommand.On;
+		
+		fbLogger.AddInfo('Sensor triggered, warning user');
+		
+		eStep := E_AlarmManagerStep.WaitForDisableWarn;
+		
+	E_AlarmManagerStep.WaitForDisableWarn:
+		// Wait for user to disable alarm and sound the alarm if it does not happen in time
+		IF bFirstCall THEN
+			// Initialize timer
+			fbTimer.PT := T#30S;
+			fbTimer(IN := FALSE);
+		ELSE
+			// Run timer FB
+			fbTimer(IN := TRUE);
+			
+			// Check if configured code is entered by user
+			IF bCodeEntered THEN
+				// Disable alarm
+				eStep := E_AlarmManagerStep.DisableAlarm;
+			END_IF
+			
+			// Check if timer expired
+			IF fbTimer.Q THEN
+				// Sound alarm
+				eStep := E_AlarmManagerStep.SoundAlarm;
+			END_IF
+		END_IF
+		
+	E_AlarmManagerStep.SoundAlarm:
+		// Turn on alarm sound
+		eSirenSoundCommand := E_DOCommand.On;
+		
+		// Turn off buzzer (if on)
+		eBuzzerCommand := E_DOCommand.Off;
+		
+		fbLogger.AddInfo('Sounding alarm');
+		
+		eStep := E_AlarmManagerStep.WaitForDisableAlarm;
+		
+	E_AlarmManagerStep.WaitForDisableAlarm:
+		// Wait for user to disable alarm or wait some time before turning it off automatically
+		IF bFirstCall THEN
+			// Initialize timer
+			fbTimer.PT := T#3M;
+			fbTimer(IN := FALSE);
+		ELSE
+			// Run timer FB
+			fbTimer(IN := TRUE);
+			
+			// Check if configured code is entered by user or if timer expired
+			IF bCodeEntered OR fbTimer.Q THEN
+				// Disable alarm
+				eStep := E_AlarmManagerStep.DisableAlarm;
+			END_IF
+		END_IF
+		
+	E_AlarmManagerStep.DisableAlarm:
+		// Turn off alarm sound
+		eSirenSoundCommand := E_DOCommand.Off;
+		
+		// Turn off buzzer (if on)
+		eBuzzerCommand := E_DOCommand.Off;
+		
+		fbLogger.AddInfo('Alarm disabled');
+		
+		// Set alarm status
+		eState := E_AlarmState.Off;
+		
+		eStep := E_AlarmManagerStep.Reset;
+		
+	E_AlarmManagerStep.Reset:
+		eStep := E_AlarmManagerStep.CheckEnable;
+		
+END_CASE
+
+// Update HMI
+UpdateHMI();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Execute_Keypads" Id="{6c4a40d7-e936-4d95-b80b-468ee9234db6}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD PRIVATE Execute_Keypads
+VAR_INPUT
+	eBuzzerCommand			: E_DOCommand;	// Keypad buzzer command
+END_VAR
+VAR_OUTPUT
+	bCodeEntered			: BOOL;			// Returns true if the configured code is entered by the user
+END_VAR
+VAR_INST
+	bInit					: BOOL;			// Initialized flag
+	eBuzzerCommandPrev		: E_DOCommand;	// Previous buzzer digital output command
+	fbBuzzerCommandTrigger	: R_TRIG;		// Buzzer command trigger
+	eStatePrev				: E_AlarmState;	// Previous alarm state
+	fbStateTrigger			: R_TRIG;		// Alarm state change trigger
+END_VAR
+VAR
+	i						: INT;			// Iterator variable
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Check if buzzer command changed
+fbBuzzerCommandTrigger(CLK := eBuzzerCommand <> eBuzzerCommandPrev);
+eBuzzerCommandPrev := eBuzzerCommand;
+
+// Check if alarm state changed
+fbStateTrigger(CLK := eState <> eStatePrev);
+eStatePrev := eState;
+
+// Initialize variable
+bCodeEntered := FALSE;
+
+FOR i := 0 TO nKeypads - 1 DO	
+	// Set keypad configure code
+	aKeypads[i].SetConfiguredCode(sCode := GVL_AlarmManager.sCode);
+	
+	// Check if buzzer command changed
+	IF fbBuzzerCommandTrigger.Q THEN
+		// Set buzzer digital output command
+		aKeypads[i].SetBuzzer(eCommand := eBuzzerCommand);
+	END_IF
+	
+	// Check if alarm state changed
+	IF fbStateTrigger.Q OR NOT bInit THEN
+		// Update keypad on alarm state change
+		aKeypads[i].SetAlarmState(eAlarmState := eState);
+	END_IF
+	
+	// Run keypad Execute method
+	aKeypads[i].Execute();
+	
+	// Check if the configured code is entered on at least one keypad
+	bCodeEntered := bCodeEntered OR aKeypads[i].CheckCode();
+END_FOR
+
+bInit := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Execute_Sensors" Id="{b6779498-0c72-4d8e-84f1-99dfdd8c538e}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD PRIVATE Execute_Sensors
+VAR_OUTPUT
+	bSensorTriggered	: BOOL;		// Returns true if a sensor detects something
+	bSensorTampered		: BOOL;		// Returns true if a sensor is tampered with
+	bWarn				: BOOL;		// Returns true if a warning is issued first instead of immediately sounding the alarm (only valid on sensor trigger)
+END_VAR
+VAR
+	i					: INT;		// Iterator variable
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Initialize variables
+bSensorTriggered := FALSE;
+bSensorTampered	:= FALSE;
+bWarn := TRUE;
+
+FOR i := 0 TO nSensors -1 DO
+	// Run sensor Execute method
+	aSensors[i].Execute();
+
+	// Check if at least one sensor detects something or is tampered with
+	bSensorTriggered := bSensorTriggered OR aSensors[i].AlarmTrigger;
+	bSensorTampered := bSensorTampered OR aSensors[i].TamperTrigger;
+	
+	// Check if alarm needs to be sounded immediately or if a warning can be issued first
+	IF aSensors[i].AlarmTrigger AND NOT aSensors[i].TamperTrigger THEN
+		// Sensor detects something but is not tampered with
+		// Warn if the sensor allows a warning
+		// If one sensor does not allow a warning, sound the alarm immediately
+		bWarn := bWarn AND aSensors[i].WarnFirst;
+	END_IF
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Execute_Sirens" Id="{dce3f125-fe98-4063-95eb-97d55a76db83}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD PRIVATE Execute_Sirens
+VAR_INPUT
+	eLightCommand				: E_DOCommand;		// Siren light digital output command
+	eSoundCommand				: E_DOCommand;		// Siren sound digital output command
+END_VAR
+VAR_OUTPUT
+	bSirenTampered				: BOOL;				// Returns true if the siren is tampered with
+END_VAR
+VAR
+	i							: INT;				// Iterator variable
+END_VAR
+VAR_INST
+	eLightCommandPrev			: E_DOCommand;		// Siren light previous digital output command
+	fbLightCommandTrigger		: R_TRIG;			// Siren light command changed trigger
+	
+	eSoundCommandPrev			: E_DOCommand;		// Siren sound previous digital output command
+	fbSoundCommandTrigger		: R_TRIG;			// Siren sound command changed trigger
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Check if the siren light digital command has changed
+fbLightCommandTrigger(CLK := eLightCommand <> eLightCommandPrev);
+eLightCommandPrev := eLightCommand;
+
+// Check if the siren sound digital command has changed
+fbSoundCommandTrigger(CLK := eSoundCommand <> eSoundCommandPrev);
+eSoundCommandPrev := eSoundCommand;
+
+// Initialize variable
+bSirenTampered	:= FALSE;
+
+FOR i := 0 TO nSirens - 1 DO
+	// Check if siren light command changed
+	IF fbLightCommandTrigger.Q THEN
+		// Set siren light digital output command
+		aSirens[i].SetLight(eCommand := eLightCommand);
+	END_IF
+	
+	// Check if siren sound command changed
+	IF fbSoundCommandTrigger.Q THEN
+		// Set siren sound digital output command
+		aSirens[i].SetSound(eCommand := eSoundCommand);
+	END_IF
+	
+	// Run siren Execute method
+	aSirens[i].Execute();
+	
+	// Check if at least one siren is tampered with
+	bSirenTampered := bSirenTampered OR aSensors[i].TamperTrigger;
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{642bd196-ed73-4737-be4b-f806cdc027db}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Initialize the alarm manager FB
+METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Initialize logger
+fbLogger.Init(sSource := sName, bEnableVerbose := TRUE);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="UpdateHMI" Id="{b53f5690-2279-4425-9271-96dee2af7c37}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Update HMI
+METHOD PRIVATE UpdateHMI
+VAR
+	i	: INT;	// Iterator variable
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// General
+stHMI.nKeypads := nKeypads;
+stHMI.nSensors := nSensors;
+stHMI.nSirens := nSirens;
+stHMI.bEnabled := eState = E_AlarmState.On;
+
+// Overview
+FOR i := 0 TO nSensors - 1 DO
+	stHMI.aSensors[i] := aSensors[i].HmiData;
+END_FOR
+
+FOR i := 0 TO nSirens - 1 DO
+	stHMI.aSirens[i] := aSirens[i].HmiData;
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_AlarmManager">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmManager.AddKeypad">
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmManager.AddSensor">
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmManager.AddSiren">
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmManager.Execute">
+      <LineId Id="757" Count="4" />
+      <LineId Id="925" Count="0" />
+      <LineId Id="762" Count="1" />
+      <LineId Id="851" Count="0" />
+      <LineId Id="764" Count="7" />
+      <LineId Id="853" Count="0" />
+      <LineId Id="772" Count="2" />
+      <LineId Id="854" Count="0" />
+      <LineId Id="775" Count="2" />
+      <LineId Id="873" Count="2" />
+      <LineId Id="882" Count="0" />
+      <LineId Id="878" Count="2" />
+      <LineId Id="886" Count="1" />
+      <LineId Id="960" Count="1" />
+      <LineId Id="888" Count="0" />
+      <LineId Id="881" Count="0" />
+      <LineId Id="884" Count="1" />
+      <LineId Id="876" Count="0" />
+      <LineId Id="778" Count="1" />
+      <LineId Id="855" Count="0" />
+      <LineId Id="780" Count="0" />
+      <LineId Id="856" Count="0" />
+      <LineId Id="781" Count="1" />
+      <LineId Id="990" Count="2" />
+      <LineId Id="783" Count="0" />
+      <LineId Id="857" Count="0" />
+      <LineId Id="784" Count="1" />
+      <LineId Id="858" Count="0" />
+      <LineId Id="786" Count="1" />
+      <LineId Id="859" Count="0" />
+      <LineId Id="788" Count="0" />
+      <LineId Id="860" Count="0" />
+      <LineId Id="789" Count="6" />
+      <LineId Id="861" Count="0" />
+      <LineId Id="796" Count="6" />
+      <LineId Id="862" Count="0" />
+      <LineId Id="803" Count="3" />
+      <LineId Id="863" Count="0" />
+      <LineId Id="808" Count="2" />
+      <LineId Id="915" Count="0" />
+      <LineId Id="917" Count="0" />
+      <LineId Id="919" Count="0" />
+      <LineId Id="927" Count="0" />
+      <LineId Id="921" Count="0" />
+      <LineId Id="923" Count="1" />
+      <LineId Id="920" Count="0" />
+      <LineId Id="922" Count="0" />
+      <LineId Id="916" Count="0" />
+      <LineId Id="911" Count="3" />
+      <LineId Id="962" Count="1" />
+      <LineId Id="928" Count="1" />
+      <LineId Id="937" Count="2" />
+      <LineId Id="941" Count="13" />
+      <LineId Id="956" Count="3" />
+      <LineId Id="955" Count="0" />
+      <LineId Id="940" Count="0" />
+      <LineId Id="818" Count="1" />
+      <LineId Id="866" Count="0" />
+      <LineId Id="821" Count="0" />
+      <LineId Id="966" Count="2" />
+      <LineId Id="964" Count="1" />
+      <LineId Id="930" Count="0" />
+      <LineId Id="823" Count="2" />
+      <LineId Id="867" Count="0" />
+      <LineId Id="826" Count="0" />
+      <LineId Id="868" Count="0" />
+      <LineId Id="936" Count="0" />
+      <LineId Id="828" Count="1" />
+      <LineId Id="869" Count="0" />
+      <LineId Id="830" Count="1" />
+      <LineId Id="870" Count="0" />
+      <LineId Id="832" Count="6" />
+      <LineId Id="871" Count="0" />
+      <LineId Id="840" Count="0" />
+      <LineId Id="969" Count="2" />
+      <LineId Id="841" Count="2" />
+      <LineId Id="872" Count="0" />
+      <LineId Id="844" Count="6" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="891" Count="0" />
+      <LineId Id="890" Count="0" />
+      <LineId Id="889" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmManager.Execute_Keypads">
+      <LineId Id="223" Count="33" />
+      <LineId Id="187" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmManager.Execute_Sensors">
+      <LineId Id="37" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="22" Count="2" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmManager.Execute_Sirens">
+      <LineId Id="246" Count="0" />
+      <LineId Id="185" Count="1" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="187" Count="2" />
+      <LineId Id="253" Count="2" />
+      <LineId Id="190" Count="1" />
+      <LineId Id="257" Count="0" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="258" Count="0" />
+      <LineId Id="193" Count="2" />
+      <LineId Id="259" Count="0" />
+      <LineId Id="196" Count="0" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="197" Count="1" />
+      <LineId Id="228" Count="0" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="229" Count="0" />
+      <LineId Id="247" Count="0" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmManager.FB_init">
+      <LineId Id="14" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmManager.UpdateHMI">
+      <LineId Id="42" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="45" Count="2" />
+      <LineId Id="49" Count="2" />
+      <LineId Id="48" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

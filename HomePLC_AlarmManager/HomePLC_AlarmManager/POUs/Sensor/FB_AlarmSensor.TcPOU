@@ -1,0 +1,180 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_AlarmSensor" Id="{b70c0fc3-adeb-4f9c-974b-1c2e4d76696e}" SpecialFunc="None">
+    <Declaration><![CDATA[// Alarm sensor FB
+FUNCTION_BLOCK FB_AlarmSensor IMPLEMENTS I_AlarmSensor
+VAR
+	sName					: STRING;				// Sensor name
+	bWarnFirst				: BOOL;					// Set to true to warn the user before setting off the alarm
+	
+	ibAlarm			AT %I*	: BOOL;					// Active low alarm input
+	ibTamper		AT %I*	: BOOL;					// Active low tamper input
+	
+	bAlarm					: BOOL;					// True if the sensor detects something
+	bTamper					: BOOL;					// True if the sensor is tampered with
+	
+	bAlarmTrigger			: BOOL;					// Returns true when the sensor is triggered
+	bTamperTrigger			: BOOL;					// Returns true when the sensor is tampered with
+	
+	stHMI					: ST_AlarmSensorHMI;	// HMI data
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="Methods" Id="{51ed284b-55ce-458c-9d89-521a2a263c5a}" />
+    <Folder Name="Properties" Id="{c1a533fb-ae32-4976-947d-2ef3acce91e4}" />
+    <Property Name="Alarm" Id="{dc64478c-441d-49da-8224-efa81b6d9483}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true if the sensor detects something (as long as something is detected)
+PROPERTY Alarm : BOOL]]></Declaration>
+      <Get Name="Get" Id="{0272ca24-d09e-4e5b-9b48-31f9e8b81725}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Alarm := bAlarm;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="AlarmTrigger" Id="{12666827-13e2-4f8c-9bf9-2a8a411f7a47}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the sensor is triggered (one cycle)
+PROPERTY AlarmTrigger : BOOL]]></Declaration>
+      <Get Name="Get" Id="{f6a62fa3-d0aa-45ff-b344-75a4803e9461}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AlarmTrigger := bAlarmTrigger;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Execute" Id="{0f046a5a-16a3-4b62-b056-a50c4fc1278a}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD Execute
+VAR_INST
+	fbAlarm		: R_TRIG;		// Alarm rising trigger
+	fbTamper	: R_TRIG;		// Tamper rising trigger
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Convert active low inputs
+bAlarm := NOT ibAlarm;
+bTamper := NOT ibTamper;
+
+// Run FBs
+fbAlarm(CLK := bAlarm);
+fbTamper(CLK := bTamper);
+
+// Check triggers
+bAlarmTrigger := fbAlarm.Q;
+bTamperTrigger := fbTamper.Q;
+
+// Update HMI
+UpdateHMI();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{ff1dc40c-1996-4aae-aa5c-8b8b146a64eb}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains	: BOOL;		// if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode		: BOOL;		// if TRUE, the instance afterwards gets moved into the copy code (online change)
+	
+	sSensorName		: STRING;	// Sensor name
+	bEnableWarning	: BOOL;		// Set to true to warn the user before setting off the alarm
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sName := sSensorName;
+bWarnFirst := bEnableWarning;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="HmiData" Id="{11eea628-f2e6-4a99-a31a-35cef36b6bfd}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns the HMI data
+PROPERTY HmiData : ST_AlarmSensorHMI]]></Declaration>
+      <Get Name="Get" Id="{62f261ad-958a-4521-9634-bca43aa5fca2}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[HmiData := stHMI;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Tamper" Id="{a2a0dd8d-69b1-4bb6-a23a-ef712e963b3a}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the sensor is tampered with (as long as the sensor is tampered with)
+PROPERTY Tamper : BOOL]]></Declaration>
+      <Get Name="Get" Id="{615b5d68-2aab-4f4c-9b3f-662b04191962}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Tamper := bTamper;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="TamperTrigger" Id="{eb07d766-9369-49d4-b8a5-9ec5e976e5da}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the tamper sensor is triggered (one cycle)
+PROPERTY TamperTrigger : BOOL]]></Declaration>
+      <Get Name="Get" Id="{39814ef7-3c13-42fe-a6cb-dd65a495ad1d}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[TamperTrigger := bTamperTrigger;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="UpdateHMI" Id="{2a73659b-cde5-47f2-97a4-eb437262e9fa}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Update HMI
+METHOD PRIVATE UpdateHMI]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stHMI.sName := sName;
+stHMI.bAlarm := bAlarm;
+stHMI.bTamper := bTamper;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="WarnFirst" Id="{8b5a5135-7729-4535-8e9c-5ce7d3db4bc8}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returs true if the user is warned before the alarm is set off
+PROPERTY WarnFirst : BOOL]]></Declaration>
+      <Get Name="Get" Id="{e88c85de-9f8d-444d-973e-afb2649b79d6}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[WarnFirst := bWarnFirst;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <LineIds Name="FB_AlarmSensor">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSensor.Alarm.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSensor.AlarmTrigger.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSensor.Execute">
+      <LineId Id="20" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="8" Count="1" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="29" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSensor.FB_init">
+      <LineId Id="7" Count="0" />
+      <LineId Id="16" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSensor.HmiData.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSensor.Tamper.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSensor.TamperTrigger.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSensor.UpdateHMI">
+      <LineId Id="20" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="19" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmSensor.WarnFirst.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

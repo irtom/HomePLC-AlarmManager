@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_AlarmManagerHMI" Id="{4eda2aba-acd9-4171-a8ec-8aaf300a6a8e}">
+    <Declaration><![CDATA[TYPE ST_AlarmManagerHMI :
+STRUCT
+	// General
+	nKeypads	: INT;		// Number of keypads
+	nSensors	: INT;		// Number of sensors
+	nSirens		: INT;		// Number of sirens
+	bEnabled	: BOOL;		// Alarm enabled state
+	
+	// Overview
+	aSensors	: ARRAY [0..GVL_AlarmManager.nMaxSensors - 1] OF ST_AlarmSensorHMI;
+	aSirens		: ARRAY [0..GVL_AlarmManager.nMaxSirens - 1] OF ST_AlarmSirenHMI;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

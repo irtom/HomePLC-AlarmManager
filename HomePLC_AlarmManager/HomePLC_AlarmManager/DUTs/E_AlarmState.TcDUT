@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="E_AlarmState" Id="{ab5e2f7c-7281-47d6-b418-50231d01efd7}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_AlarmState :
+(
+	Off 			:= 0,
+	Enabling		:= 1,
+	On				:= 2
+);
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

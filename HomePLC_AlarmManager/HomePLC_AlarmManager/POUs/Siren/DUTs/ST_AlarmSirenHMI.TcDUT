@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_AlarmSirenHMI" Id="{bf9d0014-e1cc-44ce-b8d9-f8449be2fd73}">
+    <Declaration><![CDATA[TYPE ST_AlarmSirenHMI :
+STRUCT
+	sName		: STRING;	// Siren name
+	bSiren		: BOOL;		// True if the siren is on
+	bLight		: BOOL;		// True if the light is on
+	bTamper		: BOOL;		// True if the siren is tampered with
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

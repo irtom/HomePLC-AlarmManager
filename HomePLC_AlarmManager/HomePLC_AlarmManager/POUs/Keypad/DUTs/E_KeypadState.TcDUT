@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="E_KeypadState" Id="{7c7b5f17-d7c0-4a06-ae53-2697cde6518b}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_KeypadState :
+(
+	Init 				:= 0,
+	Idle				:= 1,
+	InputDetected		:= 2,
+	CheckInput			:= 3,
+	Reset				:= 4	
+);
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,424 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_AlarmKeypad" Id="{a80355c7-d520-4b86-beb1-ae604d52844e}" SpecialFunc="None">
+    <Declaration><![CDATA[// Alarm keypad FB (B11-11-11L11-11-11)
+FUNCTION_BLOCK FB_AlarmKeypad IMPLEMENTS I_AlarmKeypad
+VAR
+	sName			: STRING;				// Keypad name
+
+	fbButton1		: FB_DigitalIn;			// Button 1
+	fbLed1			: FB_DigitalOut;		// LED 1
+	fbButton2		: FB_DigitalIn;			// Button 2
+	fbLed2			: FB_DigitalOut;		// LED 2
+	fbButton3		: FB_DigitalIn;			// Button 3
+	fbLed3			: FB_DigitalOut;		// LED 3
+	fbButton4		: FB_DigitalIn;			// Button 4
+	fbLed4			: FB_DigitalOut;		// LED 4
+	fbButton5		: FB_DigitalIn;			// Button 5
+	fbLed5			: FB_DigitalOut;		// LED 5
+	fbButton6		: FB_DigitalIn;			// Button 6
+	fbLed6			: FB_DigitalOut;		// LED 6
+	fbBuzzer		: FB_DigitalOut;		// Buzzer
+
+	eState			: E_KeypadState;		// Keypad state
+	sConfiguredCode	: STRING;				// Configured alarm code
+	sInputCode		: STRING;				// User input code
+	dtInputTime		: DATE_AND_TIME;		// Date and time of last user input
+	stLedsDefault	: ST_LedState;			// Default LEDs state
+	
+	stHMI			: ST_AlarmKeypadHMI;	// HMI data
+	stVirtual		: ST_AlarmKeypadVirtual;	// Virtual keypad
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="Methods" Id="{ece52884-0872-4a62-a42f-6ab43354ba26}" />
+    <Folder Name="Properties" Id="{f0934509-7275-4b2a-96b4-09513f05b8dd}" />
+    <Method Name="CheckCode" Id="{3b02d97c-c990-4ebc-9bb2-3370f3699b9c}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Returns true if the user input code equals the configured code
+METHOD CheckCode : BOOL]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Compare codes
+CheckCode := sInputCode = sConfiguredCode;
+
+// Reset input if correct code was entered
+IF CheckCode THEN
+	Reset();
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CollectInput" Id="{fd4deb83-44f6-4ec5-9c14-9171b2d5e000}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Collect user input from buttons and build the entered code, returns true if input was detected
+METHOD PRIVATE CollectInput: BOOL
+VAR
+	sInput			: STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Check buttons and translate to input
+IF fbButton1.Command = E_DICommand.ShortPress THEN sInput := '1'; END_IF
+IF fbButton2.Command = E_DICommand.ShortPress THEN sInput := '2'; END_IF
+IF fbButton3.Command = E_DICommand.ShortPress THEN sInput := '3'; END_IF
+IF fbButton4.Command = E_DICommand.ShortPress THEN sInput := '4'; END_IF
+IF fbButton5.Command = E_DICommand.ShortPress THEN sInput := '5'; END_IF
+IF fbButton6.Command = E_DICommand.ShortPress THEN sInput := '6'; END_IF
+
+// Check if input was detected
+IF sInput <> '' THEN
+	// Build user input code
+	sInputCode := CONCAT(sInputCode, sInput);
+	
+	// Update time of last input
+	dtInputTime := GetDateTime();
+	
+	// Set output
+	CollectInput := TRUE;
+ELSE
+	// Set output
+	CollectInput := FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Execute" Id="{dcfc6ac9-b1ab-4fce-abd9-3df78b1908cc}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD Execute
+VAR CONSTANT
+	stLedsOn	: ST_LedState := (eLed1 := E_DOCommand.On,
+									eLed2 := E_DOCommand.On,
+									eLed3 := E_DOCommand.On,
+									eLed4 := E_DOCommand.On,
+									eLed5 := E_DOCommand.On,
+									eLed6 := E_DOCommand.On);
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Keypad state machine
+CASE eState OF
+	E_KeypadState.Init:
+		// Initialize
+		eState := E_KeypadState.Idle;
+	
+	E_KeypadState.Idle:
+		// Wait for input
+		IF CollectInput() THEN
+			eState := E_KeypadState.InputDetected;
+		END_IF
+	
+	E_KeypadState.InputDetected:
+		// Collect input in every state so no input is lost
+		CollectInput();
+		
+		// Enable all LEDs
+		SetLeds(stLedsOn);
+		
+		eState := E_KeypadState.CheckInput;
+		
+	E_KeypadState.CheckInput:
+		// Continue collecting input
+		CollectInput();
+		
+		// If no input is detected during some time, reset the keypad
+		IF GetDateTime() - dtInputTime > T#2S THEN
+			eState := E_KeypadState.Reset;
+		END_IF
+		
+	E_KeypadState.Reset:
+		// Reset keypad
+		Reset();
+		
+		eState := E_KeypadState.Idle;
+END_CASE
+
+// Update HMI
+UpdateHMI();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{f26755b2-272a-4307-9c02-60417ea1380a}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains	: BOOL;		// if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode		: BOOL;		// if TRUE, the instance afterwards gets moved into the copy code (online change)
+	
+	sKeypadName		: STRING;	// Keypad name
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sName := sKeypadName;
+
+fbBuzzer.SetBlinkPeriod(tPeriod := T#1500MS);
+fbLed1.SetBlinkPeriod(tPeriod := T#1500MS);]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="HmiData" Id="{4a86c3b2-3ccf-4749-96c6-9488329c41e3}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns the HMI data
+PROPERTY HmiData : ST_AlarmKeypadHMI]]></Declaration>
+      <Get Name="Get" Id="{255b3549-d762-4caa-b1dd-4b7877205dcd}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[HmiData := stHMI;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Name" Id="{27c2cdd2-67b8-42bd-bda7-f79e5fc88dfd}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns the keypad name
+PROPERTY Name : STRING]]></Declaration>
+      <Get Name="Get" Id="{9e822015-9e8f-4e75-aff4-922a47a32c24}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Name := sName;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Reset" Id="{fcbf7db0-52ce-4432-89bc-348c5bf3de67}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Reset the keypad
+METHOD PRIVATE Reset]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Reset user input code
+sInputCode := '';
+
+// Reset all LEDs to their default value
+SetLeds(stLedsDefault);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetAlarmState" Id="{8c2a4b4b-adbc-47ae-b535-c8cc81d2d62a}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Call this method once when the alarm state is changed
+METHOD SetAlarmState
+VAR_INPUT
+	eAlarmState			: E_AlarmState;		// Alarm state
+END_VAR
+VAR CONSTANT
+	stLedsAlarmOn		: ST_LedState := (eLed1 := E_DOCommand.On,
+											eLed2 := E_DOCommand.Off,
+											eLed3 := E_DOCommand.Off,
+											eLed4 := E_DOCommand.Off,
+											eLed5 := E_DOCommand.Off,
+											eLed6 := E_DOCommand.Off);
+	stLedsAlarmOff		: ST_LedState := (eLed1 := E_DOCommand.Off,
+											eLed2 := E_DOCommand.Off,
+											eLed3 := E_DOCommand.Off,
+											eLed4 := E_DOCommand.Off,
+											eLed5 := E_DOCommand.Off,
+											eLed6 := E_DOCommand.Off);
+	stLedsAlarmEnabling	: ST_LedState := (eLed1 := E_DOCommand.Blink,
+											eLed2 := E_DOCommand.Off,
+											eLed3 := E_DOCommand.Off,
+											eLed4 := E_DOCommand.Off,
+											eLed5 := E_DOCommand.Off,
+											eLed6 := E_DOCommand.Off);
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Set LEDs default state
+CASE eAlarmState OF
+	E_AlarmState.Off:
+		// Alarm is off
+		stLedsDefault := stLedsAlarmOff;
+		
+	E_AlarmState.Enabling:
+		// Alarm is enabling
+		stLedsDefault := stLedsAlarmEnabling;
+	
+	E_AlarmState.On:
+		// Alarm is on
+		stLedsDefault := stLedsAlarmOn;
+END_CASE
+
+// Reset keypad
+Reset();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetBuzzer" Id="{8c85d6a6-e587-43ab-ac28-0d2066d871e3}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set the buzzer command
+METHOD SetBuzzer
+VAR_INPUT
+	eCommand	: E_DOCommand;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Set digital output command
+fbBuzzer.SetCommand(eCommandIn := eCommand);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetConfiguredCode" Id="{ea8e82ff-a600-4b6b-8104-4c28e5f58674}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set the keypad configured code
+METHOD SetConfiguredCode
+VAR_INPUT
+	sCode	:	STRING;		// Configured code
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Set configured alarm code
+sConfiguredCode := sCode;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetLeds" Id="{4e78cd65-e66b-4185-abae-07e993abdc49}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set the LEDs state
+METHOD PRIVATE SetLeds
+VAR_INPUT
+	stLeds		: ST_LedState;		// LED states
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fbLed1.SetCommand(eCommandIn := stLeds.eLed1);
+fbLed2.SetCommand(eCommandIn := stLeds.eLed2);
+fbLed3.SetCommand(eCommandIn := stLeds.eLed3);
+fbLed4.SetCommand(eCommandIn := stLeds.eLed4);
+fbLed5.SetCommand(eCommandIn := stLeds.eLed5);
+fbLed6.SetCommand(eCommandIn := stLeds.eLed6);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="UpdateHMI" Id="{7a0629e2-90c8-426c-8935-80070f3d7d43}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Update HMI
+METHOD PRIVATE UpdateHMI
+VAR
+	stLed1HMI	: ST_HmiDigitalOut;
+	stLed2HMI	: ST_HmiDigitalOut;
+	stLed3HMI	: ST_HmiDigitalOut;
+	stLed4HMI	: ST_HmiDigitalOut;
+	stLed5HMI	: ST_HmiDigitalOut;
+	stLed6HMI	: ST_HmiDigitalOut;
+	stBuzzerHMI	: ST_HmiDigitalOut;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Get data
+stLed1HMI := fbLed1.HmiData;
+stLed2HMI := fbLed2.HmiData;
+stLed3HMI := fbLed3.HmiData;
+stLed4HMI := fbLed4.HmiData;
+stLed5HMI := fbLed5.HmiData;
+stLed6HMI := fbLed6.HmiData;
+stBuzzerHMI := fbBuzzer.HmiData;
+
+// Set HMI data
+stHMI.bLed1 := stLed1HMI.bValue;
+stHMI.bLed2 := stLed2HMI.bValue;
+stHMI.bLed3 := stLed3HMI.bValue;
+stHMI.bLed4 := stLed4HMI.bValue;
+stHMI.bLed5 := stLed5HMI.bValue;
+stHMI.bLed6 := stLed6HMI.bValue;
+stHMI.bBuzzer := stBuzzerHMI.bValue;
+
+stHMI.sCode := sInputCode;
+stHMI.sName := sName;
+
+// Set buttons
+fbButton1.SetExternalIn(bIn := stVirtual.bButton1);
+fbButton2.SetExternalIn(bIn := stVirtual.bButton2);
+fbButton3.SetExternalIn(bIn := stVirtual.bButton3);
+fbButton4.SetExternalIn(bIn := stVirtual.bButton4);
+fbButton5.SetExternalIn(bIn := stVirtual.bButton5);
+fbButton6.SetExternalIn(bIn := stVirtual.bButton6);]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_AlarmKeypad">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.CheckCode">
+      <LineId Id="11" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="8" Count="1" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.CollectInput">
+      <LineId Id="28" Count="0" />
+      <LineId Id="6" Count="4" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="19" Count="1" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="21" Count="1" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="14" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.Execute">
+      <LineId Id="66" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="33" Count="2" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="36" Count="4" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="63" Count="1" />
+      <LineId Id="70" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="42" Count="3" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="46" Count="1" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="49" Count="1" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="85" Count="1" />
+      <LineId Id="83" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.FB_init">
+      <LineId Id="7" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="24" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.HmiData.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.Name.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.Reset">
+      <LineId Id="14" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="22" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.SetAlarmState">
+      <LineId Id="11" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="54" Count="2" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="61" Count="1" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="57" Count="1" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.SetBuzzer">
+      <LineId Id="10" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.SetConfiguredCode">
+      <LineId Id="10" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.SetLeds">
+      <LineId Id="7" Count="4" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AlarmKeypad.UpdateHMI">
+      <LineId Id="36" Count="0" />
+      <LineId Id="38" Count="5" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="22" Count="4" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="57" Count="5" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

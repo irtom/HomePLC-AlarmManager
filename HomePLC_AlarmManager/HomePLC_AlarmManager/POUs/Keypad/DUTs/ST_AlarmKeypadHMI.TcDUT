@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_AlarmKeypadHMI" Id="{0d3ecb8f-9124-44a6-bcaf-81f2df1e8f87}">
+    <Declaration><![CDATA[TYPE ST_AlarmKeypadHMI :
+STRUCT
+	sName			: STRING;
+	
+	bLed1			: BOOL;
+	bLed2			: BOOL;
+	bLed3			: BOOL;
+	bLed4			: BOOL;
+	bLed5			: BOOL;
+	bLed6			: BOOL;
+	
+	bBuzzer			: BOOL;
+	
+	sCode			: STRING;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

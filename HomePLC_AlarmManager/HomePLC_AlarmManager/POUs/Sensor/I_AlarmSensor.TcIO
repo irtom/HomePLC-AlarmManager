@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_AlarmSensor" Id="{802b0c79-3ff8-470c-84f5-297de45ac557}">
+    <Declaration><![CDATA[// Alarm sensor interface
+INTERFACE I_AlarmSensor]]></Declaration>
+    <Folder Name="Methods" Id="{36e59979-efd9-4e29-915e-ac5581d378a1}" />
+    <Folder Name="Properties" Id="{d793336f-5d20-4819-80aa-749bb57eece6}" />
+    <Property Name="Alarm" Id="{8c779e7c-8b43-4d32-b291-dddcbf5b3d27}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true if the sensor detects something (as long as something is detected)
+PROPERTY Alarm : BOOL]]></Declaration>
+      <Get Name="Get" Id="{221656c8-4d0d-4cd7-86d3-8166804e9691}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="AlarmTrigger" Id="{c1221bc2-2f0d-4bcd-9bb6-d0c572481ce5}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the sensor is triggered (one cycle)
+PROPERTY AlarmTrigger : BOOL]]></Declaration>
+      <Get Name="Get" Id="{d522e176-0694-49cd-b9aa-75b416686887}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Method Name="Execute" Id="{cc845582-fc5e-40c4-b5e2-0ee92910255c}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD Execute]]></Declaration>
+    </Method>
+    <Property Name="HmiData" Id="{8b93e6d7-44c4-4347-aad0-61606fb435d9}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns the HMI data
+PROPERTY HmiData : ST_AlarmSensorHMI]]></Declaration>
+      <Get Name="Get" Id="{6dd33ad4-4e49-4d88-98b8-e69dfbaefe60}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="Tamper" Id="{2a92cbfc-3e60-4eae-9bed-ff22512b10ee}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the sensor is tampered with (as long as the sensor is tampered with)
+PROPERTY Tamper : BOOL]]></Declaration>
+      <Get Name="Get" Id="{a8afe724-b251-498c-a0b2-3cc7dbc1b5af}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="TamperTrigger" Id="{2bf88576-b45f-4bdc-8661-5dee2a6bad54}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the tamper sensor is triggered (one cycle)
+PROPERTY TamperTrigger : BOOL]]></Declaration>
+      <Get Name="Get" Id="{0c4eb710-3bb7-4bab-aade-df538071d4f4}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="WarnFirst" Id="{948c6109-9864-44bd-adc9-ae783e456996}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returs true if the user is warned before the alarm is set off
+PROPERTY WarnFirst : BOOL]]></Declaration>
+      <Get Name="Get" Id="{af8a196e-6fd9-4883-8722-554ab2d62d99}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+  </Itf>
+</TcPlcObject>

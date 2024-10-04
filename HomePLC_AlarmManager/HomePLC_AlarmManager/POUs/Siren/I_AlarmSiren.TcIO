@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_AlarmSiren" Id="{bfa488ed-9755-4a73-8c3f-b14787f1cc45}">
+    <Declaration><![CDATA[INTERFACE I_AlarmSiren]]></Declaration>
+    <Folder Name="Methods" Id="{4d2a1b00-fa1b-4efb-aa98-15f99a3905f2}" />
+    <Folder Name="Properties" Id="{88d914b4-30e3-4dc6-adee-a1eb7e43505d}" />
+    <Method Name="Execute" Id="{dd4f613b-d9af-426f-b715-cea3331a0759}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Run this method every cycle
+METHOD Execute]]></Declaration>
+    </Method>
+    <Property Name="HmiData" Id="{c5ef5d40-529e-4199-b522-8e6d9e81378c}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns the HMI data
+PROPERTY HmiData : ST_AlarmSirenHMI]]></Declaration>
+      <Get Name="Get" Id="{51372ac0-fbd0-4335-a5e9-4ca6630a3134}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Method Name="SetLight" Id="{98378644-7b62-4660-9c83-0a816a16c176}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set siren light
+METHOD SetLight
+VAR_INPUT
+	eCommand	: E_DOCommand;		// Siren digital output command
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="SetSound" Id="{e99ceb6b-4663-4e5d-a02f-f2f6c76dec1a}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set siren sound
+METHOD SetSound
+VAR_INPUT
+	eCommand	: E_DOCommand;		// Siren sound digital output command
+END_VAR]]></Declaration>
+    </Method>
+    <Property Name="Tamper" Id="{ef44bc84-52e9-4c46-ae75-c67022d6f536}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the siren is tampered with (as long as the siren is tampered with)
+PROPERTY Tamper : BOOL]]></Declaration>
+      <Get Name="Get" Id="{918dc861-8e4f-451a-8306-8f18ff9a52a6}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="TamperTrigger" Id="{28ce9ca0-237e-461a-b902-3a272bae5ea5}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true when the tamper sensor is triggered (one cycle)
+PROPERTY TamperTrigger : BOOL]]></Declaration>
+      <Get Name="Get" Id="{28ee1f55-273f-4652-9a7c-f6cb0b0fbb24}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+  </Itf>
+</TcPlcObject>
