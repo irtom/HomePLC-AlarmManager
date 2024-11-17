@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="GetDateTime" Id="{d98f9110-38cf-48a3-9cd0-78009fa76cb7}" SpecialFunc="None">
+    <Declaration><![CDATA[// Gets the current date and time (now)
+FUNCTION GetDateTime : DATE_AND_TIME
+VAR
+	fbSystemTime : GETSYSTEMTIME;
+	timeAsFileTime : T_FILETIME;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbSystemTime(timeLoDW => timeAsFileTime.dwLowDateTime, timeHiDW => timeAsFileTime.dwHighDateTime);
+GetDateTime := FILETIME_TO_DT(timeAsFileTime);]]></ST>
+    </Implementation>
+    <LineIds Name="GetDateTime">
+      <LineId Id="8" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

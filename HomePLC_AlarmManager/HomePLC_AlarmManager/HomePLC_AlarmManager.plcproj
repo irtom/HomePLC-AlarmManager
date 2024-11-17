@@ -19,7 +19,7 @@
     <Company>Tom Oyen</Company>
     <Released>false</Released>
     <Title>HomePLC Alarm Manager</Title>
-    <ProjectVersion>1.0</ProjectVersion>
+    <ProjectVersion>1.0.1</ProjectVersion>
     <LibraryCategories>
       <LibraryCategory xmlns="">
         <Id>{b8416a00-dcbd-4e41-b1cd-0b85e53fe91c}</Id>
@@ -52,6 +52,7 @@
     </Compile>
     <Compile Include="POUs\FB_AlarmManager.TcPOU">
       <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
     </Compile>
     <Compile Include="POUs\I_AlarmManager.TcIO">
       <SubType>Code</SubType>
@@ -70,6 +71,7 @@
     </Compile>
     <Compile Include="POUs\Keypad\FB_AlarmKeypad.TcPOU">
       <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
     </Compile>
     <Compile Include="POUs\Keypad\I_AlarmKeypad.TcIO">
       <SubType>Code</SubType>
@@ -79,6 +81,7 @@
     </Compile>
     <Compile Include="POUs\Sensor\FB_AlarmSensor.TcPOU">
       <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
     </Compile>
     <Compile Include="POUs\Sensor\I_AlarmSensor.TcIO">
       <SubType>Code</SubType>
@@ -88,6 +91,7 @@
     </Compile>
     <Compile Include="POUs\Siren\FB_AlarmSiren.TcPOU">
       <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
     </Compile>
     <Compile Include="POUs\Siren\I_AlarmSiren.TcIO">
       <SubType>Code</SubType>
@@ -103,6 +107,9 @@
     <Compile Include="Project Information\F_GetVersion.TcPOU">
       <SubType>Code</SubType>
       <SystemCall>true</SystemCall>
+    </Compile>
+    <Compile Include="UTIL\GetDateTime.TcPOU">
+      <SubType>Code</SubType>
     </Compile>
     <Compile Include="Version\Global_Version.TcGVL">
       <SubType>Code</SubType>
@@ -130,6 +137,7 @@
   <ItemGroup>
     <Folder Include="DUTs" />
     <Folder Include="GVLs" />
+    <Folder Include="UTIL" />
     <Folder Include="POUs\Sensor\DUTs" />
     <Folder Include="POUs\Siren\DUTs" />
     <Folder Include="VISUs" />
@@ -145,10 +153,6 @@
     <PlaceholderReference Include="HomePLC DIO">
       <DefaultResolution>HomePLC DIO, * (Tom Oyen)</DefaultResolution>
       <Namespace>HomePLC_DIO</Namespace>
-    </PlaceholderReference>
-    <PlaceholderReference Include="HomePLC General">
-      <DefaultResolution>HomePLC General, * (Tom Oyen)</DefaultResolution>
-      <Namespace>HomePLC_General</Namespace>
     </PlaceholderReference>
     <PlaceholderReference Include="HomePLC Logging">
       <DefaultResolution>HomePLC Logging, * (Tom Oyen)</DefaultResolution>
@@ -203,6 +207,10 @@
     <PlaceholderReference Include="Tc2_System">
       <DefaultResolution>Tc2_System, * (Beckhoff Automation GmbH)</DefaultResolution>
       <Namespace>Tc2_System</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_Utilities">
+      <DefaultResolution>Tc2_Utilities, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Utilities</Namespace>
     </PlaceholderReference>
     <PlaceholderReference Include="Tc3_Module">
       <DefaultResolution>Tc3_Module, * (Beckhoff Automation GmbH)</DefaultResolution>
