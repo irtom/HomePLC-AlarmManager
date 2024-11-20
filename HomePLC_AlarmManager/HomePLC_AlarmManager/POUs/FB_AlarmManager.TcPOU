@@ -5,25 +5,30 @@
 {attribute 'reflection'} 
 FUNCTION_BLOCK FB_AlarmManager IMPLEMENTS I_AlarmManager
 VAR
-	aKeypads	: ARRAY [0..GVL_AlarmManager.nMaxKeypads - 1] OF I_AlarmKeypad;		// Keypads
-	nKeypads	: INT;																// Number of keypads
+	aKeypads				: ARRAY [0..GVL_AlarmManager.nMaxKeypads - 1] OF I_AlarmKeypad;		// Keypads
+	nKeypads				: INT;																// Number of keypads
 	
-	aSensors	: ARRAY [0..GVL_AlarmManager.nMaxSensors - 1] OF I_AlarmSensor;		// Alarm sensors
-	nSensors	: INT;																// Number of alarm sensors
+	aSensors				: ARRAY [0..GVL_AlarmManager.nMaxSensors - 1] OF I_AlarmSensor;		// Alarm sensors
+	nSensors				: INT;																// Number of alarm sensors
 	
-	aSirens		: ARRAY [0..GVL_AlarmManager.nMaxSirens - 1] OF I_AlarmSiren;		// Alarm sirens
-	nSirens		: INT;																// Number of alarm sirens
+	aSirens					: ARRAY [0..GVL_AlarmManager.nMaxSirens - 1] OF I_AlarmSiren;		// Alarm sirens
+	nSirens					: INT;																// Number of alarm sirens
 	
-	eState		: E_AlarmState;														// Alarm state
+	eState					: E_AlarmState;														// Alarm state
 	
-	fbLogger	: class_Tc3EventLogger;												// Logging FB
+	bEnabled		AT %Q*	: BOOL;																// Alarm enabled
+	nState			AT %Q*	: INT;																// Alarm state number
+	nActiveID		AT %Q*	: INT;																// Alarm component ID that tripped alarm
+	nActiveReason	AT %Q*	: INT;																// ID reason alarm was tripped
+	
+	fbLogger				: class_Tc3EventLogger;												// Logging FB
 
 	// Use attributes to copy instance name to sName
 	{attribute 'instance-path'} 
     {attribute 'noinit'} 
-    sName		: STRING; 															// Instance name
+    sName					: STRING; 															// Instance name
 	
-	stHMI		: ST_AlarmManagerHMI;												// HMI data
+	stHMI					: ST_AlarmManagerHMI;												// HMI data
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
@@ -69,21 +74,25 @@ nSirens := nSirens + 1;]]></ST>
       <Declaration><![CDATA[// Run this method every cycle
 METHOD Execute
 VAR_INST
-	eStep						: E_AlarmManagerStep;		// Alarm manager state machine step
-	eStepPrev					: E_AlarmManagerStep;		// Alarm manager state machine previous step
-	bFirstCall					: BOOL;				// Alarm manager state machine step first call
+	eStep						: E_AlarmManagerStep;	// Alarm manager state machine step
+	eStepPrev					: E_AlarmManagerStep;	// Alarm manager state machine previous step
+	bFirstCall					: BOOL;					// Alarm manager state machine step first call
 	
-	bCodeEntered				: BOOL;				// True if the configured code was entered on a keypad
-	bSensorTriggered			: BOOL;				// True if a sensor is triggered
-	bSensorTampered				: BOOL;				// True if a sensor is tampered with
-	bWarn						: BOOL;				// True if the user needs to be warned first when a sensor is triggered
-	bSirenTampered				: BOOL;				// True if a siren is tampered with
+	bCodeEntered				: BOOL;					// True if the configured code was entered on a keypad
+	bSensorTriggered			: BOOL;					// True if a sensor is triggered
+	bSensorTampered				: BOOL;					// True if a sensor is tampered with
+	bWarn						: BOOL;					// True if the user needs to be warned first when a sensor is triggered
+	bSirenTampered				: BOOL;					// True if a siren is tampered with
+	nActiveSensorID				: INT;					// Alarm component ID of activated sensor
+	nActiveSirenID				: INT;					// Alarm component ID of tampered siren
 	
-	eBuzzerCommand				: E_DOCommand;		// Keypad buzzer digital output command
-	eSirenLightCommand			: E_DOCommand;		// Siren light digital output command
-	eSirenSoundCommand			: E_DOCommand;		// Siren sound digital output command
+	eBuzzerCommand				: E_DOCommand;			// Keypad buzzer digital output command
+	eSirenLightCommand			: E_DOCommand;			// Siren light digital output command
+	eSirenSoundCommand			: E_DOCommand;			// Siren sound digital output command
 	
-	fbTimer						: TON;				// Timer FB
+	fbTimer						: TON;					// Timer FB
+	
+	sLog						: STRING;				// Log string
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[// Execute methods
@@ -91,10 +100,12 @@ Execute_Keypads(eBuzzerCommand := eBuzzerCommand,
 				bCodeEntered => bCodeEntered);
 Execute_Sensors(bSensorTriggered => bSensorTriggered,
 				bSensorTampered => bSensorTampered,
-				bWarn => bWarn);
+				bWarn => bWarn,
+				nActiveSensorID => nActiveSensorID);
 Execute_Sirens(eLightCommand := eSirenLightCommand,
 				eSoundCommand := eSirenSoundCommand,
-				bSirenTampered => bSirenTampered);
+				bSirenTampered => bSirenTampered,
+				nActiveSirenID => nActiveSirenID);
 
 // Set variables
 bFirstCall := eStep <> eStepPrev;
@@ -109,6 +120,10 @@ CASE eStep OF
 	E_AlarmManagerStep.CheckEnable:
 		// Check if configured code is entered by the user
 		IF bCodeEntered THEN
+			// Reset variables
+			nActiveID := 0;
+			nActiveReason := 0;
+			
 			eStep := E_AlarmManagerStep.HardwareCheck;
 		END_IF
 		
@@ -152,10 +167,15 @@ CASE eStep OF
 				eStep := E_AlarmManagerStep.Enable;
 			END_IF
 		END_IF
+		
+		// Check if configure code is entered by user
+		IF bCodeEntered THEN
+			eStep := E_AlarmManagerStep.DisableAlarm;
+		END_IF
 	
 	E_AlarmManagerStep.Enable:
 		// Enable alarm
-		eState := E_AlarmState.On;
+		eState := E_AlarmState.Enabled;
 		
 		fbLogger.AddInfo('Alarm enabled');
 		
@@ -169,11 +189,32 @@ CASE eStep OF
 		
 		// Check if a sensor or siren is tampered with
 		IF bSensorTampered OR bSirenTampered THEN
+			// Save what tripped alarm
+			nActiveReason := 1;		// Tampering
+			
+			IF bSensorTampered THEN
+				nActiveID := nActiveSensorID;
+			END_IF
+			
+			IF bSirenTampered THEN
+				nActiveID := nActiveSirenID;
+			END_IF
+			
+			sLog := CONCAT('Alarm tripped because of tampering by ID ', TO_STRING(nActiveID));
+			fbLogger.AddWarning(sLog);
+			
 			eStep := E_AlarmManagerStep.SoundAlarm;
 		END_IF
 		
 		// Check if a sensor detects something
 		IF bSensorTriggered THEN
+			// Save siren name
+			nActiveID := nActiveSensorID;
+			nActiveReason := 2;		// Motion
+			
+			sLog := CONCAT('Alarm tripped because of motion by ID ', TO_STRING(nActiveID));
+			fbLogger.AddWarning(sLog);
+			
 			// Check if user needs to be warned
 			IF bWarn THEN
 				eStep := E_AlarmManagerStep.Warn;
@@ -185,6 +226,9 @@ CASE eStep OF
 	E_AlarmManagerStep.Warn:
 		// Warn the user before sounding the alarm
 		eBuzzerCommand := E_DOCommand.On;
+		
+		// Set alarm state
+		eState := E_AlarmState.Warning;
 		
 		fbLogger.AddInfo('Sensor triggered, warning user');
 		
@@ -216,6 +260,9 @@ CASE eStep OF
 	E_AlarmManagerStep.SoundAlarm:
 		// Turn on alarm sound
 		eSirenSoundCommand := E_DOCommand.On;
+		
+		// Set alarm state
+		eState := E_AlarmState.Tripped;
 		
 		// Turn off buzzer (if on)
 		eBuzzerCommand := E_DOCommand.Off;
@@ -259,6 +306,10 @@ CASE eStep OF
 		eStep := E_AlarmManagerStep.CheckEnable;
 		
 END_CASE
+
+// Update variables
+nState := eState;
+bEnabled := eState = E_AlarmState.Enabled;
 
 // Update HMI
 UpdateHMI();]]></ST>
@@ -325,12 +376,13 @@ bInit := TRUE;]]></ST>
       <Declaration><![CDATA[// Run this method every cycle
 METHOD PRIVATE Execute_Sensors
 VAR_OUTPUT
-	bSensorTriggered	: BOOL;		// Returns true if a sensor detects something
-	bSensorTampered		: BOOL;		// Returns true if a sensor is tampered with
-	bWarn				: BOOL;		// Returns true if a warning is issued first instead of immediately sounding the alarm (only valid on sensor trigger)
+	bSensorTriggered	: BOOL;					// Returns true if a sensor detects something
+	bSensorTampered		: BOOL;					// Returns true if a sensor is tampered with
+	bWarn				: BOOL;					// Returns true if a warning is issued first instead of immediately sounding the alarm (only valid on sensor trigger)
+	nActiveSensorID		: INT;					// Returns the ID of the active sensor
 END_VAR
 VAR
-	i					: INT;		// Iterator variable
+	i					: INT;					// Iterator variable
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[// Initialize variables
@@ -353,6 +405,13 @@ FOR i := 0 TO nSensors -1 DO
 		// If one sensor does not allow a warning, sound the alarm immediately
 		bWarn := bWarn AND aSensors[i].WarnFirst;
 	END_IF
+	
+	// Report which sensor was activated
+	IF aSensors[i].AlarmTrigger OR aSensors[i].TamperTrigger THEN
+		IF nActiveSensorID = 0 THEN
+			nActiveSensorID := aSensors[i].ID;
+		END_IF
+	END_IF
 END_FOR]]></ST>
       </Implementation>
     </Method>
@@ -365,6 +424,7 @@ VAR_INPUT
 END_VAR
 VAR_OUTPUT
 	bSirenTampered				: BOOL;				// Returns true if the siren is tampered with
+	nActiveSirenID				: INT;				// Returns the name of the tampered siren
 END_VAR
 VAR
 	i							: INT;				// Iterator variable
@@ -405,7 +465,14 @@ FOR i := 0 TO nSirens - 1 DO
 	aSirens[i].Execute();
 	
 	// Check if at least one siren is tampered with
-	bSirenTampered := bSirenTampered OR aSensors[i].TamperTrigger;
+	bSirenTampered := bSirenTampered OR aSirens[i].TamperTrigger;
+	
+	// Report which siren was tampered with
+	IF aSirens[i].TamperTrigger THEN
+		IF nActiveSirenID = 0 THEN
+			nActiveSirenID := aSirens[i].ID;
+		END_IF
+	END_IF
 END_FOR]]></ST>
       </Implementation>
     </Method>
@@ -433,7 +500,9 @@ END_VAR]]></Declaration>
 stHMI.nKeypads := nKeypads;
 stHMI.nSensors := nSensors;
 stHMI.nSirens := nSirens;
-stHMI.bEnabled := eState = E_AlarmState.On;
+stHMI.eState := eState;
+stHMI.nActiveID := nActiveID;
+stHMI.nActiveReason := nActiveReason;
 
 // Overview
 FOR i := 0 TO nSensors - 1 DO

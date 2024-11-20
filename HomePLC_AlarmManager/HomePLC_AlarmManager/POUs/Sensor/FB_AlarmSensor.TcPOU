@@ -5,6 +5,7 @@
 FUNCTION_BLOCK FB_AlarmSensor IMPLEMENTS I_AlarmSensor
 VAR
 	sName					: STRING;				// Sensor name
+	nID						: INT;					// Alarm component ID
 	bWarnFirst				: BOOL;					// Set to true to warn the user before setting off the alarm
 	
 	ibAlarm			AT %I*	: BOOL;					// Active low alarm input
@@ -74,11 +75,13 @@ VAR_INPUT
 	bInCopyCode		: BOOL;		// if TRUE, the instance afterwards gets moved into the copy code (online change)
 	
 	sSensorName		: STRING;	// Sensor name
+	nSensorID		: INT;		// Sensor ID
 	bEnableWarning	: BOOL;		// Set to true to warn the user before setting off the alarm
 END_VAR
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[sName := sSensorName;
+nID := nSensorID;
 bWarnFirst := bEnableWarning;]]></ST>
       </Implementation>
     </Method>
@@ -89,6 +92,16 @@ PROPERTY HmiData : ST_AlarmSensorHMI]]></Declaration>
         <Declaration><![CDATA[]]></Declaration>
         <Implementation>
           <ST><![CDATA[HmiData := stHMI;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="ID" Id="{2b131cc5-68f4-47ea-996b-1741c668fec3}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Get the alarm component ID of the sensor
+PROPERTY ID : INT]]></Declaration>
+      <Get Name="Get" Id="{d94e6bc9-789d-4574-bf17-ba645a08e35a}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ID := nID;]]></ST>
         </Implementation>
       </Get>
     </Property>
@@ -117,6 +130,7 @@ PROPERTY TamperTrigger : BOOL]]></Declaration>
 METHOD PRIVATE UpdateHMI]]></Declaration>
       <Implementation>
         <ST><![CDATA[stHMI.sName := sName;
+stHMI.nID := nID;
 stHMI.bAlarm := bAlarm;
 stHMI.bTamper := bTamper;]]></ST>
       </Implementation>

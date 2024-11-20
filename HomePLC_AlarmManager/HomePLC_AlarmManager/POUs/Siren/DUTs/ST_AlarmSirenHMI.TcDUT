@@ -4,6 +4,7 @@
     <Declaration><![CDATA[TYPE ST_AlarmSirenHMI :
 STRUCT
 	sName		: STRING;	// Siren name
+	nID			: INT;		// Alarm component ID
 	bSiren		: BOOL;		// True if the siren is on
 	bLight		: BOOL;		// True if the light is on
 	bTamper		: BOOL;		// True if the siren is tampered with

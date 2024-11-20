@@ -15,6 +15,13 @@ PROPERTY HmiData : ST_AlarmSirenHMI]]></Declaration>
         <Declaration><![CDATA[]]></Declaration>
       </Get>
     </Property>
+    <Property Name="ID" Id="{a0b31d9e-fbc1-4868-acc2-91d27bd929a2}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Get the alarm component ID of the siren
+PROPERTY ID : INT]]></Declaration>
+      <Get Name="Get" Id="{7be0d60d-8b9f-44b5-89ef-786ebf2b4f19}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
     <Method Name="SetLight" Id="{98378644-7b62-4660-9c83-0a816a16c176}" FolderPath="Methods\">
       <Declaration><![CDATA[// Set siren light
 METHOD SetLight

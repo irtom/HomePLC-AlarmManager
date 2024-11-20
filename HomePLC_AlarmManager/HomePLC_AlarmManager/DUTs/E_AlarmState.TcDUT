@@ -3,11 +3,14 @@
   <DUT Name="E_AlarmState" Id="{ab5e2f7c-7281-47d6-b418-50231d01efd7}">
     <Declaration><![CDATA[{attribute 'qualified_only'}
 {attribute 'strict'}
+{attribute 'to_string'}
 TYPE E_AlarmState :
 (
 	Off 			:= 0,
 	Enabling		:= 1,
-	On				:= 2
+	Enabled			:= 2,
+	Warning			:= 3,
+	Tripped			:= 4
 );
 END_TYPE]]></Declaration>
   </DUT>

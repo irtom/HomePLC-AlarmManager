@@ -4,14 +4,16 @@
     <Declaration><![CDATA[TYPE ST_AlarmManagerHMI :
 STRUCT
 	// General
-	nKeypads	: INT;		// Number of keypads
-	nSensors	: INT;		// Number of sensors
-	nSirens		: INT;		// Number of sirens
-	bEnabled	: BOOL;		// Alarm enabled state
+	nKeypads		: INT;				// Number of keypads
+	nSensors		: INT;				// Number of sensors
+	nSirens			: INT;				// Number of sirens
+	eState			: E_AlarmState;		// Alarm enabled state
+	nActiveID		: INT;				// ID of alarm component which was last active
+	nActiveReason	: INT;				// Reason why alarm component was active
 	
 	// Overview
-	aSensors	: ARRAY [0..GVL_AlarmManager.nMaxSensors - 1] OF ST_AlarmSensorHMI;
-	aSirens		: ARRAY [0..GVL_AlarmManager.nMaxSirens - 1] OF ST_AlarmSirenHMI;
+	aSensors		: ARRAY [0..GVL_AlarmManager.nMaxSensors - 1] OF ST_AlarmSensorHMI;
+	aSirens			: ARRAY [0..GVL_AlarmManager.nMaxSirens - 1] OF ST_AlarmSirenHMI;
 END_STRUCT
 END_TYPE]]></Declaration>
   </DUT>

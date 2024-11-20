@@ -4,6 +4,7 @@
     <Declaration><![CDATA[TYPE ST_AlarmSensorHMI :
 STRUCT
 	sName		: STRING;	// Sensor name
+	nID			: INT;		// Alarm component ID
 	bAlarm		: BOOL;		// True if the sensor detects something
 	bTamper		: BOOL;		// True if the sensor is tampered with
 END_STRUCT

@@ -5,6 +5,7 @@
 FUNCTION_BLOCK FB_AlarmSiren IMPLEMENTS I_AlarmSiren
 VAR
 	sName				: STRING;				// Siren name
+	nID					: INT;					// Alarm component ID
 	
 	ibTamper			AT %I* : BOOL;			// Active low tamper input
 	fbLight				: FB_DigitalOut;		// Siren light digital output FB
@@ -48,10 +49,12 @@ VAR_INPUT
 	bInCopyCode		: BOOL;		// if TRUE, the instance afterwards gets moved into the copy code (online change)
 	
 	sSirenName		: STRING;	// Siren name
+	nSirenID		: INT;		// Sensor ID
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[sName := sSirenName;]]></ST>
+        <ST><![CDATA[sName := sSirenName;
+nID := nSirenID;]]></ST>
       </Implementation>
     </Method>
     <Property Name="HmiData" Id="{06ad8ee2-5edc-4ca1-8bdd-00cc4c074abb}" FolderPath="Properties\">
@@ -61,6 +64,16 @@ PROPERTY HmiData : ST_AlarmSirenHMI]]></Declaration>
         <Declaration><![CDATA[]]></Declaration>
         <Implementation>
           <ST><![CDATA[HmiData := stHMI;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="ID" Id="{3f061ba0-6334-4174-800b-553072ea0b2d}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Get the alarm component ID of the siren
+PROPERTY ID : INT]]></Declaration>
+      <Get Name="Get" Id="{b338a67c-185e-4200-a022-6d18a52d9cda}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ID := nID;]]></ST>
         </Implementation>
       </Get>
     </Property>
@@ -120,6 +133,7 @@ stLightHMI := fbLight.HmiData;
 
 // Set HMI data
 stHMI.sName := sName;
+stHMI.nID := nID;
 stHMI.bSiren := stSirenHMI.bValue;
 stHMI.bLight := stLightHMI.bValue;
 stHMI.bTamper := bTamper;]]></ST>

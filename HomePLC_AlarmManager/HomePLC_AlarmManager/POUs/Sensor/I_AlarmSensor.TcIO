@@ -30,6 +30,13 @@ PROPERTY HmiData : ST_AlarmSensorHMI]]></Declaration>
         <Declaration><![CDATA[]]></Declaration>
       </Get>
     </Property>
+    <Property Name="ID" Id="{cd4d11ba-b307-4cf7-9126-17b74cb0de54}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Get the alarm component ID of the sensor
+PROPERTY ID : INT]]></Declaration>
+      <Get Name="Get" Id="{b0f62a42-4c3a-470a-b124-c4925ec0a4ef}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
     <Property Name="Tamper" Id="{2a92cbfc-3e60-4eae-9bed-ff22512b10ee}" FolderPath="Properties\">
       <Declaration><![CDATA[// Returns true when the sensor is tampered with (as long as the sensor is tampered with)
 PROPERTY Tamper : BOOL]]></Declaration>

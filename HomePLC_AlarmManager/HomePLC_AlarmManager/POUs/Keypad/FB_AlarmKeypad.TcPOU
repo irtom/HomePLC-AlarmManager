@@ -143,8 +143,7 @@ END_VAR
       <Implementation>
         <ST><![CDATA[sName := sKeypadName;
 
-fbBuzzer.SetBlinkPeriod(tPeriod := T#1500MS);
-fbLed1.SetBlinkPeriod(tPeriod := T#1500MS);]]></ST>
+fbBuzzer.SetBlinkPeriod(tPeriod := T#1500MS);]]></ST>
       </Implementation>
     </Method>
     <Property Name="HmiData" Id="{4a86c3b2-3ccf-4749-96c6-9488329c41e3}" FolderPath="Properties\">
@@ -203,6 +202,18 @@ VAR CONSTANT
 											eLed4 := E_DOCommand.Off,
 											eLed5 := E_DOCommand.Off,
 											eLed6 := E_DOCommand.Off);
+	stLedsAlarmWarning	: ST_LedState := (eLed1 := E_DOCommand.Blink,
+											eLed2 := E_DOCommand.Off,
+											eLed3 := E_DOCommand.Off,
+											eLed4 := E_DOCommand.Off,
+											eLed5 := E_DOCommand.Off,
+											eLed6 := E_DOCommand.Off);
+	stLedsAlarmTripped	: ST_LedState := (eLed1 := E_DOCommand.Blink,
+											eLed2 := E_DOCommand.Off,
+											eLed3 := E_DOCommand.Off,
+											eLed4 := E_DOCommand.Off,
+											eLed5 := E_DOCommand.Off,
+											eLed6 := E_DOCommand.Off);
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[// Set LEDs default state
@@ -213,11 +224,22 @@ CASE eAlarmState OF
 		
 	E_AlarmState.Enabling:
 		// Alarm is enabling
+		fbLed1.SetBlinkPeriod(tPeriod := T#1500MS);	// Same as buzzer
 		stLedsDefault := stLedsAlarmEnabling;
 	
-	E_AlarmState.On:
+	E_AlarmState.Enabled:
 		// Alarm is on
 		stLedsDefault := stLedsAlarmOn;
+		
+	E_AlarmState.Warning:
+		// Alarm is warning
+		fbLed1.SetBlinkPeriod(tPeriod := T#500MS);	// Fast blinking, buzzer is on continuously
+		stLedsDefault := stLedsAlarmWarning;
+		
+	E_AlarmState.Tripped:
+		// Alarm has been tripped
+		fbLed1.SetBlinkPeriod(tPeriod := T#500MS);	// Fast blinking, alarm is sounding
+		stLedsDefault := stLedsAlarmTripped;
 END_CASE
 
 // Reset keypad
