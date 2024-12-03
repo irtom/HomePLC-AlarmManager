@@ -37,3 +37,6 @@ The library works with the following hardware:
 - FB_AlarmSiren
   - Alerts the user when the alarm is triggered by sound and light
   - Reports when the siren is tampered with
+
+## Example usage
+See the [example repository](https://github.com/irtom/HomePLC-Example).
