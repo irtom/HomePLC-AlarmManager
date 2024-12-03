@@ -19,7 +19,8 @@ TYPE E_AlarmManagerStep :
 	SoundAlarm				:= 32,
 	WaitForDisableAlarm		:= 33,
 	
-	DisableAlarm			:= 40,
+	Disabling				:= 40,
+	Disable					:= 41,
 	
 	Reset					:= 50
 );

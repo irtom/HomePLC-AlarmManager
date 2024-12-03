@@ -19,7 +19,7 @@
     <Company>Tom Oyen</Company>
     <Released>false</Released>
     <Title>HomePLC Alarm Manager</Title>
-    <ProjectVersion>1.0.2</ProjectVersion>
+    <ProjectVersion>1.0.3</ProjectVersion>
     <LibraryCategories>
       <LibraryCategory xmlns="">
         <Id>{b8416a00-dcbd-4e41-b1cd-0b85e53fe91c}</Id>

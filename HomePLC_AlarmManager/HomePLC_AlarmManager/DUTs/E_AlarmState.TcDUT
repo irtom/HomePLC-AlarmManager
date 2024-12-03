@@ -10,7 +10,8 @@ TYPE E_AlarmState :
 	Enabling		:= 1,
 	Enabled			:= 2,
 	Warning			:= 3,
-	Tripped			:= 4
+	Tripped			:= 4,
+	Disabling		:= 5
 );
 END_TYPE]]></Declaration>
   </DUT>

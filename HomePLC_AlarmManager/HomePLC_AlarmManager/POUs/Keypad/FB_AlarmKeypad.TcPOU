@@ -181,34 +181,40 @@ SetLeds(stLedsDefault);]]></ST>
       <Declaration><![CDATA[// Call this method once when the alarm state is changed
 METHOD SetAlarmState
 VAR_INPUT
-	eAlarmState			: E_AlarmState;		// Alarm state
+	eAlarmState				: E_AlarmState;		// Alarm state
 END_VAR
 VAR CONSTANT
-	stLedsAlarmOn		: ST_LedState := (eLed1 := E_DOCommand.On,
+	stLedsAlarmOn			: ST_LedState := (eLed1 := E_DOCommand.On,
 											eLed2 := E_DOCommand.Off,
 											eLed3 := E_DOCommand.Off,
 											eLed4 := E_DOCommand.Off,
 											eLed5 := E_DOCommand.Off,
 											eLed6 := E_DOCommand.Off);
-	stLedsAlarmOff		: ST_LedState := (eLed1 := E_DOCommand.Off,
+	stLedsAlarmOff			: ST_LedState := (eLed1 := E_DOCommand.Off,
 											eLed2 := E_DOCommand.Off,
 											eLed3 := E_DOCommand.Off,
 											eLed4 := E_DOCommand.Off,
 											eLed5 := E_DOCommand.Off,
 											eLed6 := E_DOCommand.Off);
-	stLedsAlarmEnabling	: ST_LedState := (eLed1 := E_DOCommand.Blink,
+	stLedsAlarmEnabling		: ST_LedState := (eLed1 := E_DOCommand.Blink,
 											eLed2 := E_DOCommand.Off,
 											eLed3 := E_DOCommand.Off,
 											eLed4 := E_DOCommand.Off,
 											eLed5 := E_DOCommand.Off,
 											eLed6 := E_DOCommand.Off);
-	stLedsAlarmWarning	: ST_LedState := (eLed1 := E_DOCommand.Blink,
+	stLedsAlarmWarning		: ST_LedState := (eLed1 := E_DOCommand.Blink,
 											eLed2 := E_DOCommand.Off,
 											eLed3 := E_DOCommand.Off,
 											eLed4 := E_DOCommand.Off,
 											eLed5 := E_DOCommand.Off,
 											eLed6 := E_DOCommand.Off);
-	stLedsAlarmTripped	: ST_LedState := (eLed1 := E_DOCommand.Blink,
+	stLedsAlarmTripped		: ST_LedState := (eLed1 := E_DOCommand.Blink,
+											eLed2 := E_DOCommand.Off,
+											eLed3 := E_DOCommand.Off,
+											eLed4 := E_DOCommand.Off,
+											eLed5 := E_DOCommand.Off,
+											eLed6 := E_DOCommand.Off);
+	stLedsAlarmDisabling	: ST_LedState := (eLed1 := E_DOCommand.Blink,
 											eLed2 := E_DOCommand.Off,
 											eLed3 := E_DOCommand.Off,
 											eLed4 := E_DOCommand.Off,
@@ -240,6 +246,11 @@ CASE eAlarmState OF
 		// Alarm has been tripped
 		fbLed1.SetBlinkPeriod(tPeriod := T#500MS);	// Fast blinking, alarm is sounding
 		stLedsDefault := stLedsAlarmTripped;
+		
+	E_AlarmState.Disabling:
+		// Alarm has been tripped
+		fbLed1.SetBlinkPeriod(tPeriod := T#250MS);	// Fast blinking, indicate alarm is disabling
+		stLedsDefault := stLedsAlarmDisabling;
 END_CASE
 
 // Reset keypad

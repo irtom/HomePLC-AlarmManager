@@ -170,7 +170,7 @@ CASE eStep OF
 		
 		// Check if configure code is entered by user
 		IF bCodeEntered THEN
-			eStep := E_AlarmManagerStep.DisableAlarm;
+			eStep := E_AlarmManagerStep.Disabling;
 		END_IF
 	
 	E_AlarmManagerStep.Enable:
@@ -184,7 +184,7 @@ CASE eStep OF
 	E_AlarmManagerStep.CheckSensors:
 		// Check if configure code is entered by user
 		IF bCodeEntered THEN
-			eStep := E_AlarmManagerStep.DisableAlarm;
+			eStep := E_AlarmManagerStep.Disabling;
 		END_IF
 		
 		// Check if a sensor or siren is tampered with
@@ -247,7 +247,7 @@ CASE eStep OF
 			// Check if configured code is entered by user
 			IF bCodeEntered THEN
 				// Disable alarm
-				eStep := E_AlarmManagerStep.DisableAlarm;
+				eStep := E_AlarmManagerStep.Disabling;
 			END_IF
 			
 			// Check if timer expired
@@ -284,21 +284,40 @@ CASE eStep OF
 			// Check if configured code is entered by user or if timer expired
 			IF bCodeEntered OR fbTimer.Q THEN
 				// Disable alarm
-				eStep := E_AlarmManagerStep.DisableAlarm;
+				eStep := E_AlarmManagerStep.Disabling;
 			END_IF
 		END_IF
 		
-	E_AlarmManagerStep.DisableAlarm:
-		// Turn off alarm sound
-		eSirenSoundCommand := E_DOCommand.Off;
+	E_AlarmManagerStep.Disabling:
+		IF bFirstCall THEN
+			// Turn off alarm sound
+			eSirenSoundCommand := E_DOCommand.Off;
 		
-		// Turn off buzzer (if on)
-		eBuzzerCommand := E_DOCommand.Off;
+			// Turn off buzzer (if on)
+			eBuzzerCommand := E_DOCommand.Off;
+			
+			// Set alarm status
+			eState := E_AlarmState.Disabling;
+			
+			// Initialize timer
+			fbTimer.PT := T#2S;
+			fbTimer(IN := FALSE);
+		ELSE
+			// Run timer FB
+			fbTimer(IN := TRUE);
+			
+			// Check if timer expired
+			IF fbTimer.Q THEN
+				// Disable alarm
+				eStep := E_AlarmManagerStep.Disable;
+			END_IF
+		END_IF
 		
-		fbLogger.AddInfo('Alarm disabled');
-		
+	E_AlarmManagerStep.Disable:
 		// Set alarm status
 		eState := E_AlarmState.Off;
+		
+		fbLogger.AddInfo('Alarm disabled');
 		
 		eStep := E_AlarmManagerStep.Reset;
 		
