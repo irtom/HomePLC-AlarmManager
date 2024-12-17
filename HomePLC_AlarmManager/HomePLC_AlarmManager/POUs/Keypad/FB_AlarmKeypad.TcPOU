@@ -5,6 +5,7 @@
 FUNCTION_BLOCK FB_AlarmKeypad IMPLEMENTS I_AlarmKeypad
 VAR
 	sName			: STRING;				// Keypad name
+	bSoundBuzzer	: BOOL;					// True if the buzzer should be used to indicate the alarm status when using this keypad
 
 	fbButton1		: FB_DigitalIn;			// Button 1
 	fbLed1			: FB_DigitalOut;		// LED 1
@@ -138,10 +139,12 @@ VAR_INPUT
 	bInCopyCode		: BOOL;		// if TRUE, the instance afterwards gets moved into the copy code (online change)
 	
 	sKeypadName		: STRING;	// Keypad name
+	bSoundBuzzer	: BOOL;		// Set to true to use the buzzer to indicate the alarm status when using this keypad
 END_VAR
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[sName := sKeypadName;
+THIS^.bSoundBuzzer := bSoundBuzzer;
 
 fbBuzzer.SetBlinkPeriod(tPeriod := T#1500MS);]]></ST>
       </Implementation>
@@ -294,6 +297,16 @@ fbLed5.SetCommand(eCommandIn := stLeds.eLed5);
 fbLed6.SetCommand(eCommandIn := stLeds.eLed6);]]></ST>
       </Implementation>
     </Method>
+    <Property Name="SoundBuzzer" Id="{63aecc96-24b7-4ba8-8988-19743abfb386}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true if the buzzer needs to sound to indicate the alarm status
+PROPERTY SoundBuzzer : BOOL]]></Declaration>
+      <Get Name="Get" Id="{39a25e29-1570-46c4-92ac-2c55888aebd8}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[SoundBuzzer := bSoundBuzzer;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
     <Method Name="UpdateHMI" Id="{7a0629e2-90c8-426c-8935-80070f3d7d43}" FolderPath="Methods\">
       <Declaration><![CDATA[// Update HMI
 METHOD PRIVATE UpdateHMI

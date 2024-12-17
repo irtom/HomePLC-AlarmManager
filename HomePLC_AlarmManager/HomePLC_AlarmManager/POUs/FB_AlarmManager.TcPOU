@@ -79,6 +79,8 @@ VAR_INST
 	bFirstCall					: BOOL;					// Alarm manager state machine step first call
 	
 	bCodeEntered				: BOOL;					// True if the configured code was entered on a keypad
+	bSoundBuzzer				: BOOL;					// True if the buzzer needs to sound to indicate the alarm status
+	bEnablingBuzzer				: BOOL;					// True if the buzzer needs to sound when enabling the alarm
 	bSensorTriggered			: BOOL;					// True if a sensor is triggered
 	bSensorTampered				: BOOL;					// True if a sensor is tampered with
 	bWarn						: BOOL;					// True if the user needs to be warned first when a sensor is triggered
@@ -97,7 +99,8 @@ END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[// Execute methods
 Execute_Keypads(eBuzzerCommand := eBuzzerCommand,
-				bCodeEntered => bCodeEntered);
+				bCodeEntered => bCodeEntered,
+				bSoundBuzzer => bSoundBuzzer);
 Execute_Sensors(bSensorTriggered => bSensorTriggered,
 				bSensorTampered => bSensorTampered,
 				bWarn => bWarn,
@@ -123,6 +126,9 @@ CASE eStep OF
 			// Reset variables
 			nActiveID := 0;
 			nActiveReason := 0;
+			
+			// Save whether to sound buzzer during enabling
+			bEnablingBuzzer := bSoundBuzzer;
 			
 			eStep := E_AlarmManagerStep.HardwareCheck;
 		END_IF
@@ -153,8 +159,11 @@ CASE eStep OF
 			// Set alarm state
 			eState := E_AlarmState.Enabling;
 			
-			// Set buzzer to blinking
-			eBuzzerCommand := E_DOCommand.Blink;
+			// Check if the buzzer needs to be used when enabling the alarm
+			IF bEnablingBuzzer THEN
+				// Set buzzer to blinking
+				eBuzzerCommand := E_DOCommand.Blink;
+			END_IF
 		ELSE
 			// Run timer FB
 			fbTimer(IN := TRUE);
@@ -300,7 +309,7 @@ CASE eStep OF
 			eState := E_AlarmState.Disabling;
 			
 			// Initialize timer
-			fbTimer.PT := T#2S;
+			fbTimer.PT := T#1.5S;
 			fbTimer(IN := FALSE);
 		ELSE
 			// Run timer FB
@@ -342,6 +351,7 @@ VAR_INPUT
 END_VAR
 VAR_OUTPUT
 	bCodeEntered			: BOOL;			// Returns true if the configured code is entered by the user
+	bSoundBuzzer			: BOOL;			// Returns true if the buzzer needs to sound to indicate the alarm status
 END_VAR
 VAR_INST
 	bInit					: BOOL;			// Initialized flag
@@ -385,7 +395,10 @@ FOR i := 0 TO nKeypads - 1 DO
 	aKeypads[i].Execute();
 	
 	// Check if the configured code is entered on at least one keypad
-	bCodeEntered := bCodeEntered OR aKeypads[i].CheckCode();
+	IF aKeypads[i].CheckCode() THEN
+		bCodeEntered := TRUE;
+		bSoundBuzzer := aKeypads[i].SoundBuzzer;
+	END_IF
 END_FOR
 
 bInit := TRUE;]]></ST>

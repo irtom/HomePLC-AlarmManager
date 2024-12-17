@@ -48,5 +48,12 @@ VAR_INPUT
 	sCode	:	STRING;		// Configured code
 END_VAR]]></Declaration>
     </Method>
+    <Property Name="SoundBuzzer" Id="{3ec4bda4-896d-49ee-aa31-721fda03403c}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Returns true if the buzzer needs to sound to indicate the alarm status
+PROPERTY SoundBuzzer : BOOL]]></Declaration>
+      <Get Name="Get" Id="{f3820ba5-aed6-413a-8c72-2bc606892d11}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
   </Itf>
 </TcPlcObject>
