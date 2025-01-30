@@ -7,6 +7,7 @@ VAR
 	sName					: STRING;				// Sensor name
 	nID						: INT;					// Alarm component ID
 	bWarnFirst				: BOOL;					// Set to true to warn the user before setting off the alarm
+	bDisable		AT %I*	: BOOL;					// Set to true to disable the sensor (can be set externally)
 	
 	ibAlarm			AT %I*	: BOOL;					// Active low alarm input
 	ibTamper		AT %I*	: BOOL;					// Active low tamper input
@@ -17,6 +18,9 @@ VAR
 	bAlarmTrigger			: BOOL;					// Returns true when the sensor is triggered
 	bTamperTrigger			: BOOL;					// Returns true when the sensor is tampered with
 	
+	aOutputOnDetect			: ARRAY [0..9] OF I_DigitalOut;	// Digital outputs to turn on when sensor is triggered
+	nOutputOnDetect			: INT;					// Number of digitial outputs in aOutputOnDetect
+	
 	stHMI					: ST_AlarmSensorHMI;	// HMI data
 END_VAR]]></Declaration>
     <Implementation>
@@ -24,6 +28,17 @@ END_VAR]]></Declaration>
     </Implementation>
     <Folder Name="Methods" Id="{51ed284b-55ce-458c-9d89-521a2a263c5a}" />
     <Folder Name="Properties" Id="{c1a533fb-ae32-4976-947d-2ef3acce91e4}" />
+    <Method Name="AddOutputOnDetect" Id="{febdc597-29ff-48e6-a464-482ef2b996a6}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Add a digital output to turn on when the sensor is triggered
+METHOD AddOutputOnDetect
+VAR_INPUT
+	IDO		: I_DigitalOut;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[aOutputOnDetect[nOutputOnDetect] := IDO;
+nOutputOnDetect := nOutputOnDetect + 1;]]></ST>
+      </Implementation>
+    </Method>
     <Property Name="Alarm" Id="{dc64478c-441d-49da-8224-efa81b6d9483}" FolderPath="Properties\">
       <Declaration><![CDATA[// Returns true if the sensor detects something (as long as something is detected)
 PROPERTY Alarm : BOOL]]></Declaration>
@@ -52,9 +67,12 @@ VAR_INST
 	fbTamper	: R_TRIG;		// Tamper rising trigger
 END_VAR]]></Declaration>
       <Implementation>
-        <ST><![CDATA[// Convert active low inputs
-bAlarm := NOT ibAlarm;
-bTamper := NOT ibTamper;
+        <ST><![CDATA[// Check if disabled
+IF NOT bDisable THEN
+	// Convert active low inputs
+	bAlarm := NOT ibAlarm;
+	bTamper := NOT ibTamper;
+END_IF
 
 // Run FBs
 fbAlarm(CLK := bAlarm);
@@ -105,6 +123,36 @@ PROPERTY ID : INT]]></Declaration>
         </Implementation>
       </Get>
     </Property>
+    <Property Name="OutputsOnDetect" Id="{e8df4108-c9a5-4faf-975a-d488559b5a42}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Gets the outputs to turn on when the sensor is triggered
+PROPERTY OutputsOnDetect : ARRAY [0..9] OF I_DigitalOut]]></Declaration>
+      <Get Name="Get" Id="{927f9a6f-69a8-4b3c-8e22-bd70562a4872}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[OutputsOnDetect := aOutputOnDetect;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="OutputsOnDetectSize" Id="{a90fccba-a840-4fc5-988c-2098fcd06383}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Number of outputs to enable when the sensor is triggered
+PROPERTY OutputsOnDetectSize : INT]]></Declaration>
+      <Get Name="Get" Id="{cd69a907-c441-4517-a3d3-92980aeaeb77}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[OutputsOnDetectSize := nOutputOnDetect;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="SetDisableState" Id="{82418202-2a3f-4e87-ba0a-b243d311464a}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set the sensor disable state
+METHOD SetDisableState
+VAR_INPUT
+	bDisable	: BOOL;		// Set to true to disable the sensor
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.bDisable := bDisable;]]></ST>
+      </Implementation>
+    </Method>
     <Property Name="Tamper" Id="{a2a0dd8d-69b1-4bb6-a23a-ef712e963b3a}" FolderPath="Properties\">
       <Declaration><![CDATA[// Returns true when the sensor is tampered with (as long as the sensor is tampered with)
 PROPERTY Tamper : BOOL]]></Declaration>
@@ -132,7 +180,8 @@ METHOD PRIVATE UpdateHMI]]></Declaration>
         <ST><![CDATA[stHMI.sName := sName;
 stHMI.nID := nID;
 stHMI.bAlarm := bAlarm;
-stHMI.bTamper := bTamper;]]></ST>
+stHMI.bTamper := bTamper;
+stHMI.bDisabled := bDisable;]]></ST>
       </Implementation>
     </Method>
     <Property Name="WarnFirst" Id="{8b5a5135-7729-4535-8e9c-5ce7d3db4bc8}" FolderPath="Properties\">

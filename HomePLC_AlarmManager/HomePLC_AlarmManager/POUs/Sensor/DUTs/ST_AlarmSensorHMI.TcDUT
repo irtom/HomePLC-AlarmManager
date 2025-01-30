@@ -7,6 +7,7 @@ STRUCT
 	nID			: INT;		// Alarm component ID
 	bAlarm		: BOOL;		// True if the sensor detects something
 	bTamper		: BOOL;		// True if the sensor is tampered with
+	bDisabled	: BOOL;		// True if the sensor is disabled
 END_STRUCT
 END_TYPE]]></Declaration>
   </DUT>

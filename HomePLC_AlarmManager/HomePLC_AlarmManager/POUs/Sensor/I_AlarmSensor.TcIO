@@ -37,6 +37,27 @@ PROPERTY ID : INT]]></Declaration>
         <Declaration><![CDATA[]]></Declaration>
       </Get>
     </Property>
+    <Property Name="OutputsOnDetect" Id="{06f7748f-95a5-4af4-a37e-9234fedd2551}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Gets the outputs to turn on when the sensor is triggered
+PROPERTY OutputsOnDetect : ARRAY [0..9] OF I_DigitalOut]]></Declaration>
+      <Get Name="Get" Id="{87d4694b-d242-4c9e-8436-41dee18c425c}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="OutputsOnDetectSize" Id="{8f8729bd-2842-4aa0-b0cf-a333be946bfc}" FolderPath="Properties\">
+      <Declaration><![CDATA[// Number of outputs to enable when the sensor is triggered
+PROPERTY OutputsOnDetectSize : INT]]></Declaration>
+      <Get Name="Get" Id="{c14ff21e-d2e6-4b62-becd-c05bde77beff}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Method Name="SetDisableState" Id="{1f9b6b7f-a25d-4463-88b4-17123628e07f}" FolderPath="Methods\">
+      <Declaration><![CDATA[// Set the sensor disable state
+METHOD SetDisableState
+VAR_INPUT
+	bDisable	: BOOL;		// Set to true to disable the sensor
+END_VAR]]></Declaration>
+    </Method>
     <Property Name="Tamper" Id="{2a92cbfc-3e60-4eae-9bed-ff22512b10ee}" FolderPath="Properties\">
       <Declaration><![CDATA[// Returns true when the sensor is tampered with (as long as the sensor is tampered with)
 PROPERTY Tamper : BOOL]]></Declaration>

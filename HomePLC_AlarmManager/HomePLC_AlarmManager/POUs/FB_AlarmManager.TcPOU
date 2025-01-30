@@ -16,10 +16,11 @@ VAR
 	
 	eState					: E_AlarmState;														// Alarm state
 	
-	bEnabled		AT %Q*	: BOOL;																// Alarm enabled
-	nState			AT %Q*	: INT;																// Alarm state number
-	nActiveID		AT %Q*	: INT;																// Alarm component ID that tripped alarm
-	nActiveReason	AT %Q*	: INT;																// ID reason alarm was tripped
+	bEnabling		AT %Q*	: BOOL;																// Alarm enabling (can be read externally)
+	bEnabled		AT %Q*	: BOOL;																// Alarm enabled (can be read externally)
+	nState			AT %Q*	: INT;																// Alarm state number (can be read externally)
+	nActiveID		AT %Q*	: INT;																// Alarm component ID that tripped alarm (can be read externally)
+	nActiveReason	AT %Q*	: INT;																// ID reason alarm was tripped (can be read externally)
 	
 	fbLogger				: class_Tc3EventLogger;												// Logging FB
 
@@ -81,9 +82,12 @@ VAR_INST
 	bCodeEntered				: BOOL;					// True if the configured code was entered on a keypad
 	bSoundBuzzer				: BOOL;					// True if the buzzer needs to sound to indicate the alarm status
 	bEnablingBuzzer				: BOOL;					// True if the buzzer needs to sound when enabling the alarm
+	bResetSensors				: BOOL;					// True if the sensor disable states need to be reset
 	bSensorTriggered			: BOOL;					// True if a sensor is triggered
 	bSensorTampered				: BOOL;					// True if a sensor is tampered with
 	bWarn						: BOOL;					// True if the user needs to be warned first when a sensor is triggered
+	aOutputOnDetect				: ARRAY [0..9] OF I_DigitalOut;	// Returns the outputs to turn on when the sensor is triggered
+	nOutputOnDetect				: INT;					// Returns the number of outputs in aOutputOnDetect
 	bSirenTampered				: BOOL;					// True if a siren is tampered with
 	nActiveSensorID				: INT;					// Alarm component ID of activated sensor
 	nActiveSirenID				: INT;					// Alarm component ID of tampered siren
@@ -95,16 +99,22 @@ VAR_INST
 	fbTimer						: TON;					// Timer FB
 	
 	sLog						: STRING;				// Log string
+END_VAR
+VAR
+	i							: INT;					// Iterator variable
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[// Execute methods
 Execute_Keypads(eBuzzerCommand := eBuzzerCommand,
 				bCodeEntered => bCodeEntered,
 				bSoundBuzzer => bSoundBuzzer);
-Execute_Sensors(bSensorTriggered => bSensorTriggered,
+Execute_Sensors(bResetDisableStates := bResetSensors,
+				bSensorTriggered => bSensorTriggered,
 				bSensorTampered => bSensorTampered,
 				bWarn => bWarn,
-				nActiveSensorID => nActiveSensorID);
+				nActiveSensorID => nActiveSensorID,
+				oaOutputOnDetect => aOutputOnDetect,
+				onOutputOnDetect => nOutputOnDetect);
 Execute_Sirens(eLightCommand := eSirenLightCommand,
 				eSoundCommand := eSirenSoundCommand,
 				bSirenTampered => bSirenTampered,
@@ -126,6 +136,9 @@ CASE eStep OF
 			// Reset variables
 			nActiveID := 0;
 			nActiveReason := 0;
+			
+			// Reset sensor disabled states
+			bResetSensors := TRUE;
 			
 			// Save whether to sound buzzer during enabling
 			bEnablingBuzzer := bSoundBuzzer;
@@ -217,7 +230,7 @@ CASE eStep OF
 		
 		// Check if a sensor detects something
 		IF bSensorTriggered THEN
-			// Save siren name
+			// Save sensor name
 			nActiveID := nActiveSensorID;
 			nActiveReason := 2;		// Motion
 			
@@ -227,7 +240,7 @@ CASE eStep OF
 			// Check if user needs to be warned
 			IF bWarn THEN
 				eStep := E_AlarmManagerStep.Warn;
-			ELSE
+			ELSE				
 				eStep := E_AlarmManagerStep.SoundAlarm;
 			END_IF
 		END_IF
@@ -275,6 +288,13 @@ CASE eStep OF
 		
 		// Turn off buzzer (if on)
 		eBuzzerCommand := E_DOCommand.Off;
+		
+		// Turn on digital outputs associated with sensor that was triggered
+		IF nOutputOnDetect > 0 THEN
+			FOR i := 0 TO nOutputOnDetect - 1 DO
+				aOutputOnDetect[i].SetCommand(eCommandIn := E_DOCommand.On);
+			END_FOR
+		END_IF
 		
 		fbLogger.AddInfo('Sounding alarm');
 		
@@ -337,6 +357,7 @@ END_CASE
 
 // Update variables
 nState := eState;
+bEnabling := eState = E_AlarmState.Enabling;
 bEnabled := eState = E_AlarmState.Enabled;
 
 // Update HMI
@@ -407,11 +428,21 @@ bInit := TRUE;]]></ST>
     <Method Name="Execute_Sensors" Id="{b6779498-0c72-4d8e-84f1-99dfdd8c538e}" FolderPath="Methods\">
       <Declaration><![CDATA[// Run this method every cycle
 METHOD PRIVATE Execute_Sensors
+VAR_INPUT
+	bResetDisableStates	: BOOL;					// Set to true to reset all sensor disabled states
+END_VAR
 VAR_OUTPUT
 	bSensorTriggered	: BOOL;					// Returns true if a sensor detects something
 	bSensorTampered		: BOOL;					// Returns true if a sensor is tampered with
 	bWarn				: BOOL;					// Returns true if a warning is issued first instead of immediately sounding the alarm (only valid on sensor trigger)
 	nActiveSensorID		: INT;					// Returns the ID of the active sensor
+	oaOutputOnDetect	: ARRAY [0..9] OF I_DigitalOut;	// Returns the outputs to turn on when the sensor is triggered
+	onOutputOnDetect	: INT;					// Returns the number of outputs in aOutputOnDetect
+END_VAR
+VAR_INST
+	fbResetTrigger		: R_TRIG;				// Reset disabled state trigger
+	aOutputOnDetect		: ARRAY [0..9] OF I_DigitalOut;	// Returns the outputs to turn on when the sensor is triggered
+	nOutputOnDetect		: INT;					// Returns the number of outputs in aOutputOnDetect
 END_VAR
 VAR
 	i					: INT;					// Iterator variable
@@ -422,7 +453,15 @@ bSensorTriggered := FALSE;
 bSensorTampered	:= FALSE;
 bWarn := TRUE;
 
+// Check reset command
+fbResetTrigger(CLK := bResetDisableStates);
+
 FOR i := 0 TO nSensors -1 DO
+	// Reset disables states
+	IF fbResetTrigger.Q THEN
+		aSensors[i].SetDisableState(bDisable := FALSE);
+	END_IF
+
 	// Run sensor Execute method
 	aSensors[i].Execute();
 
@@ -442,9 +481,15 @@ FOR i := 0 TO nSensors -1 DO
 	IF aSensors[i].AlarmTrigger OR aSensors[i].TamperTrigger THEN
 		IF nActiveSensorID = 0 THEN
 			nActiveSensorID := aSensors[i].ID;
+			aOutputOnDetect := aSensors[i].OutputsOnDetect;
+			nOutputOnDetect := aSensors[i].OutputsOnDetectSize;
 		END_IF
 	END_IF
-END_FOR]]></ST>
+END_FOR
+
+// Set outputs
+oaOutputOnDetect := aOutputOnDetect;
+onOutputOnDetect := nOutputOnDetect;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Execute_Sirens" Id="{dce3f125-fe98-4063-95eb-97d55a76db83}" FolderPath="Methods\">
